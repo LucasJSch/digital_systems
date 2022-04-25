@@ -7,7 +7,7 @@
 
 GHDL=/usr/bin/ghdl
 GTKWAVE=/usr/local/bin/gtkwave
-STOP_TIME=10000ns
+STOP_TIME=1000ns
 CURRENT_PATH=$(pwd)
 FILEPATH=$CURRENT_PATH$1
 ENTITY=$2
