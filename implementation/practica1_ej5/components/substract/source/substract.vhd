@@ -2,7 +2,7 @@ library ieee;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
-entity sum is
+entity substract is
     generic(N_BITS : natural);
     port(
         x1_i : in  std_logic_vector(N_BITS-1 downto 0);
@@ -11,7 +11,7 @@ entity sum is
     );
 end entity;
 
-architecture sum_arch of sum is
+architecture substract_arch of substract is
 begin
-	y_o <= std_logic_vector(signed(x1_i) + signed(x2_i));
+	y_o <= std_logic_vector(signed(x1_i) - signed(x2_i));
 end architecture;
