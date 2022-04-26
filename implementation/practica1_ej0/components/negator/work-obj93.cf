@@ -1,7 +1,0 @@
-v 4
-file / "/home/lucasscheink/Escritorio/FIUBA/SisDig/guias/implementacion/practica1_ej0/components/negator/source/negator.vhd" "18a24221cd8009e5e4d8cbfe36f8339782cd46b7" "20220424213108.978":
-  entity negator at 1( 0) + 0 on 13;
-  architecture neg_arq of negator at 11( 121) + 0 on 14;
-file / "/home/lucasscheink/Escritorio/FIUBA/SisDig/guias/implementacion/practica1_ej0/components/negator/source/negator_tb.vhd" "b35ff44b07f221f3c84bf9f2f7862b26726defdc" "20220424213501.212":
-  entity negator_tb at 1( 0) + 0 on 17;
-  architecture negator_tb_arq of negator_tb at 7( 71) + 0 on 18;
