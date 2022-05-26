@@ -3,10 +3,11 @@
 # Script to compile and simulate a VHDL-descripted component.
 # Compilation is done with GHDL, while simulation with GTKWAVE.
 
-# Execution example: ./simulate.sh PATH_TO_SRC_FILE ENTITY_NAME PATH_TO_SAVE_VCD_FILE
+# Execution structure: ./simulate.sh PATH_TO_SRC_FILE ENTITY_NAME PATH_TO_SAVE_VCD_FILE
+# Execution example:   ./simulate.sh /tp2/components/fp_mul/src/fp_mul.vhd fp_mul /build/
 
-GHDL=/usr/local/bin/ghdl
-GTKWAVE=/usr/local/bin/gtkwave
+GHDL=/home/ljsch/FIUBA/SisDig/software/ghdl/bin/ghdl
+GTKWAVE=gtkwave
 STOP_TIME=10000ns
 CURRENT_PATH=$(pwd)
 FILEPATH=$CURRENT_PATH$1
