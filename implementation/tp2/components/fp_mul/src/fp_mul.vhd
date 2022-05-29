@@ -36,15 +36,16 @@ architecture fp_mul_arch of fp_mul is
 
 
 	signal result_sign             : std_logic := '0';
-	signal result_exponent         : std_logic_vector(EXPONENT_BITS downto 0) := (others => '0');
+	signal result_exponent         : std_logic_vector(EXPONENT_BITS+1 downto 0) := (others => '0');
 	signal result_significand      : std_logic_vector(SIGNIFICAND_BITS - 1 downto 0) := (others => '0');
     signal bits_shift              : integer := 0;
-    signal result_ready            : std_logic := '0';
+    signal result_ready            : std_logic := 'U';
 
     signal debug_a_exp : std_logic_vector(EXPONENT_BITS-1 downto 0);
     signal debug_b_exp : std_logic_vector(EXPONENT_BITS-1 downto 0);
     signal debug_bias : std_logic_vector(EXPONENT_BITS downto 0);
     signal debug_max_exp : std_logic_vector(EXPONENT_BITS downto 0);
+	signal debug_result_exponent : std_logic_vector(EXPONENT_BITS+1 downto 0) := (others => '0');
 
 begin
 	process(clk)
@@ -54,32 +55,40 @@ begin
             -------------- debugging --------------
             debug_a_exp <=  a(EXPONENT_START_BIT downto EXPONENT_END_BIT);
             debug_b_exp <=  b(EXPONENT_START_BIT downto EXPONENT_END_BIT);
-            debug_bias <=  std_logic_vector(to_signed(EXPONENT_BIAS, result_exponent'length));
-            debug_bias <=  std_logic_vector(to_signed(MAX_EXPONENT, result_exponent'length));
+            debug_bias <=  std_logic_vector(to_signed(EXPONENT_BIAS, debug_bias'length));
+            debug_max_exp <=  std_logic_vector(to_signed(MAX_EXPONENT, debug_max_exp'length));
             ---------------------------------------
 
             -- Compute sign
             result_sign <= a(SIGN_START_BIT) xor b(SIGN_START_BIT);
             
             -- Compute exponent
-            result_exponent <= std_logic_vector(
-                signed(a(EXPONENT_START_BIT downto EXPONENT_END_BIT)) + signed(b(EXPONENT_START_BIT downto EXPONENT_END_BIT)) + to_signed(EXPONENT_BIAS, result_exponent'length) + to_signed(EXPONENT_BIAS, result_exponent'length)
-                );
-
+            result_exponent <= std_logic_vector(to_signed(
+                to_integer(unsigned(a(EXPONENT_START_BIT downto EXPONENT_END_BIT))) +
+                to_integer(unsigned(b(EXPONENT_START_BIT downto EXPONENT_END_BIT))) +
+                EXPONENT_BIAS +
+                EXPONENT_BIAS,
+                result_exponent'length 
+            ));
+            
+            -- result_exponent <= std_logic_vector(signed(integer(-32)));
             if (signed(result_exponent) > to_signed(MAX_EXPONENT, result_exponent'length)) then
                 result_exponent <= std_logic_vector(to_signed(MAX_EXPONENT, result_exponent'length));
                 result_significand <= (others => '1');
-                result_ready <= '1';
-            end if;
-
-            if (signed(result_exponent) < to_signed(MIN_EXPONENT, result_exponent'length)) then
+                result_ready <= '0';
+            elsif (signed(result_exponent) < to_signed(MIN_EXPONENT, result_exponent'length)) then
                 result_exponent <= std_logic_vector(to_signed(MIN_EXPONENT, result_exponent'length));
                 result_significand <= (others => '0');
                 result_ready <= '1';
+            else
+                result_ready <= 'X';
+                debug_result_exponent <= std_logic_vector(signed(result_exponent) - to_signed(EXPONENT_BIAS, result_exponent'length) - to_signed(EXPONENT_BIAS, result_exponent'length));
+                debug_result_exponent <= to_unsigned(to_integer(signed(debug_result_exponent)), result_exponent'length);
+                -- result_exponent <= std_logic_vector(to_unsigned(to_integer(signed(result_exponent)), result_exponent'length));
             end if;
 
+            -- -- Compute significand
             if (result_ready = '0') then
-                -- -- Compute base
                 -- result_significand <= std_logic_vector(
                 --     signed(a(SIGNIFICAND_START_BIT downto SIGNIFICAND_END_BIT)) * signed(b(SIGNIFICAND_START_BIT downto SIGNIFICAND_END_BIT))
                 --     )(result_significand'length downto 0);
