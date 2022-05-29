@@ -13,16 +13,16 @@ end entity;
 
 architecture fp_mul_arch of fp_mul is
 
-	constant N_BITS                : integer := 32;
-    constant EXPONENT_BIAS         : integer := -127;
-    constant MAX_EXPONENT          : integer := 127;
-    constant MIN_EXPONENT          : integer := -126;
-
     -- Order of bits:
-    -- | SIGN_BIT | EXPONENT_BITS | SIGNIFICAND_BITS | --
+    -- | SIGN_BIT | EXPONENT_BITS | MANTISSA_BITS | --
 	constant SIGN_BITS             : integer := 1;
     constant EXPONENT_BITS         : integer := 8;
-    constant SIGNIFICAND_BITS      : integer := 23;
+    constant MANTISSA_BITS         : integer := 23;
+	constant N_BITS                : integer := 32;
+
+    constant EXPONENT_BIAS         : signed(EXPONENT_BITS downto 0) := to_signed(127, EXPONENT_BITS+1);
+    constant MAX_EXPONENT          : signed(EXPONENT_BITS downto 0) := to_signed(127, EXPONENT_BITS+1);
+    constant MIN_EXPONENT          : signed(EXPONENT_BITS downto 0) := to_signed(-126, EXPONENT_BITS+1);
 
     constant SIGN_START_BIT        : integer := N_BITS - SIGN_BITS;
     constant SIGN_END_BIT          : integer := SIGN_START_BIT - SIGN_BITS + 1;
@@ -30,75 +30,58 @@ architecture fp_mul_arch of fp_mul is
     constant EXPONENT_START_BIT    : integer := SIGN_END_BIT - 1;
     constant EXPONENT_END_BIT      : integer := EXPONENT_START_BIT - EXPONENT_BITS + 1;
 
-    constant SIGNIFICAND_START_BIT : integer := EXPONENT_END_BIT - 1;
-    constant SIGNIFICAND_END_BIT   : integer := 0;
-
+    constant MANTISSA_START_BIT    : integer := EXPONENT_END_BIT - 1;
+    constant MANTISSA_END_BIT      : integer := 0;
 
 
 	signal result_sign             : std_logic := '0';
-	signal result_exponent         : std_logic_vector(EXPONENT_BITS+1 downto 0) := (others => '0');
-	signal result_significand      : std_logic_vector(SIGNIFICAND_BITS - 1 downto 0) := (others => '0');
-    signal bits_shift              : integer := 0;
-    signal result_ready            : std_logic := 'U';
+	signal result_exponent         : unsigned(EXPONENT_BITS+1 downto 0) := (others => '0');
+	signal result_mantissa         : unsigned(MANTISSA_BITS - 1 downto 0) := (others => '0');
 
-    signal debug_a_exp : std_logic_vector(EXPONENT_BITS-1 downto 0);
-    signal debug_b_exp : std_logic_vector(EXPONENT_BITS-1 downto 0);
-    signal debug_bias : std_logic_vector(EXPONENT_BITS downto 0);
-    signal debug_max_exp : std_logic_vector(EXPONENT_BITS downto 0);
-	signal debug_result_exponent : std_logic_vector(EXPONENT_BITS+1 downto 0) := (others => '0');
+    -- Exponent registers need one more bit to be able to compute the unsigned operations.
+    signal a_exp                   : signed(EXPONENT_BITS downto 0) := (others => '0');
+    signal b_exp                   : signed(EXPONENT_BITS downto 0) := (others => '0');
+    signal aux_exp                 : signed(EXPONENT_BITS downto 0) := (others => '0');
 
+    -- Significand registers need two more bit to be able to detect overflow and add the '1' bit on top.
+    signal a_mantissa           : unsigned(MANTISSA_BITS downto 0);
+    signal b_mantissa           : unsigned(MANTISSA_BITS downto 0);
+    signal aux_mantissa         : unsigned(MANTISSA_BITS*2+1 downto 0);
+
+    signal debug : std_logic := 'U';
 begin
-	process(clk)
+    
+    -- Compute sign
+    result_sign <= a(SIGN_START_BIT) xor b(SIGN_START_BIT);
+    
+    -- Compute exponent
+    a_exp <= signed("0" & a(EXPONENT_START_BIT downto EXPONENT_END_BIT)) - EXPONENT_BIAS;
+    b_exp <= signed("0" & b(EXPONENT_START_BIT downto EXPONENT_END_BIT)) - EXPONENT_BIAS;
+    aux_exp <= a_exp + b_exp;
+
+    -- Compute mantissa
+    a_mantissa <= unsigned("1" & a(MANTISSA_START_BIT downto MANTISSA_END_BIT));
+    b_mantissa <= unsigned("1" & a(MANTISSA_START_BIT downto MANTISSA_END_BIT));
+    aux_mantissa <= a_mantissa * b_mantissa;
+
+    -- Shifting mantissa if necessary
+    mantissa_shift: process(aux_mantissa, aux_exp)
+	begin
+		if aux_mantissa(MANTISSA_BITS*2+1) = '1' then
+            debug <= '1';
+			result_mantissa <= aux_mantissa(MANTISSA_BITS*2 downto MANTISSA_BITS+1);
+			result_exponent <= unsigned(aux_exp + to_signed(1, result_exponent'length) + EXPONENT_BIAS);
+		else
+            debug <= '0';
+            result_mantissa <= unsigned(signed(aux_mantissa(2*MANTISSA_BITS-1 downto MANTISSA_BITS)));
+			result_exponent <= unsigned(signed("0" & aux_exp)  + EXPONENT_BIAS);
+		end if;		
+	end process;
+
+    process(clk)
     begin
         if rising_edge(clk) then
-
-            -------------- debugging --------------
-            debug_a_exp <=  a(EXPONENT_START_BIT downto EXPONENT_END_BIT);
-            debug_b_exp <=  b(EXPONENT_START_BIT downto EXPONENT_END_BIT);
-            debug_bias <=  std_logic_vector(to_signed(EXPONENT_BIAS, debug_bias'length));
-            debug_max_exp <=  std_logic_vector(to_signed(MAX_EXPONENT, debug_max_exp'length));
-            ---------------------------------------
-
-            -- Compute sign
-            result_sign <= a(SIGN_START_BIT) xor b(SIGN_START_BIT);
-            
-            -- Compute exponent
-            result_exponent <= std_logic_vector(to_signed(
-                to_integer(unsigned(a(EXPONENT_START_BIT downto EXPONENT_END_BIT))) +
-                to_integer(unsigned(b(EXPONENT_START_BIT downto EXPONENT_END_BIT))) +
-                EXPONENT_BIAS +
-                EXPONENT_BIAS,
-                result_exponent'length 
-            ));
-            
-            -- result_exponent <= std_logic_vector(signed(integer(-32)));
-            if (signed(result_exponent) > to_signed(MAX_EXPONENT, result_exponent'length)) then
-                result_exponent <= std_logic_vector(to_signed(MAX_EXPONENT, result_exponent'length));
-                result_significand <= (others => '1');
-                result_ready <= '0';
-            elsif (signed(result_exponent) < to_signed(MIN_EXPONENT, result_exponent'length)) then
-                result_exponent <= std_logic_vector(to_signed(MIN_EXPONENT, result_exponent'length));
-                result_significand <= (others => '0');
-                result_ready <= '1';
-            else
-                result_ready <= 'X';
-                debug_result_exponent <= std_logic_vector(signed(result_exponent) - to_signed(EXPONENT_BIAS, result_exponent'length) - to_signed(EXPONENT_BIAS, result_exponent'length));
-                debug_result_exponent <= to_unsigned(to_integer(signed(debug_result_exponent)), result_exponent'length);
-                -- result_exponent <= std_logic_vector(to_unsigned(to_integer(signed(result_exponent)), result_exponent'length));
-            end if;
-
-            -- -- Compute significand
-            if (result_ready = '0') then
-                -- result_significand <= std_logic_vector(
-                --     signed(a(SIGNIFICAND_START_BIT downto SIGNIFICAND_END_BIT)) * signed(b(SIGNIFICAND_START_BIT downto SIGNIFICAND_END_BIT))
-                --     )(result_significand'length downto 0);
-                    
-                -- while (result_exponent & 0x) == 0) loop 
-                --     bits_shift <<= 1
-                -- end loop;
-            end if;
-
-            z <= result_sign & result_exponent(EXPONENT_BITS-1 downto 0) & result_significand;
+            z <= result_sign & std_logic_vector(result_exponent(EXPONENT_BITS-1 downto 0)) & std_logic_vector(result_mantissa);
         end if;
-	end process;
+    end process;
 end;
