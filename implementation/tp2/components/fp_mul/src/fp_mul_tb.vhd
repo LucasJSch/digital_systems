@@ -20,13 +20,7 @@ architecture fp_mul_tb_arq of fp_mul_tb is
 	signal b_tb   : std_logic_vector(31 downto 0);
 	signal z_tb   : std_logic_vector(31 downto 0);
 
-	signal abc : signed(3 downto 0);
-	signal def : unsigned(3 downto 0);
-
 begin
-
-	abc <= to_signed(-3, 4);
-	def <= unsigned(abc);
 
 	clk_tb <= not clk_tb after 15 ps;
 	a_tb <= '1' & "10000000" & "00000000000000000010101";
