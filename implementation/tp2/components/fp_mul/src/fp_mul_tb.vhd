@@ -5,7 +5,7 @@ use IEEE.numeric_std.all;
 entity fp_mul_tb is
 end;
 
-architecture fp_mul_tb_arq of fp_mul_tb is
+architecture fp_mul_tb_arch of fp_mul_tb is
 	component fp_mul is
         port(
 			clk : in  std_logic;
