@@ -2,6 +2,7 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
+-- TODO: Make this able to work with a generic format.
 entity fp_mul is
 	port(
         clk : in  std_logic;
