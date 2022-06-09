@@ -2,13 +2,15 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
--- TODO: Make this able to work with a generic format.
 entity fp_mul is
+    generic(
+            N_BITS : integer := 32;
+            EXPONENT_BITS : integer := 8);
 	port(
         clk : in  std_logic;
-		a   : in  std_logic_vector(31 downto 0);
-		b   : out std_logic_vector(31 downto 0);
-		z   : out std_logic_vector(31 downto 0)
+		a   : in  std_logic_vector(N_BITS-1 downto 0);
+		b   : out std_logic_vector(N_BITS-1 downto 0);
+		z   : out std_logic_vector(N_BITS-1 downto 0)
 	);
 end entity;
 
@@ -29,17 +31,15 @@ architecture fp_mul_arch of fp_mul is
     -- Order of bits:
     -- | SIGN_BIT | EXPONENT_BITS | MANTISSA_BITS | --
 	constant SIGN_BITS           : integer := 1;
-    constant EXPONENT_BITS       : integer := 8;
-    constant MANTISSA_BITS       : integer := 23;
-	constant N_BITS              : integer := 32;
+    constant MANTISSA_BITS       : integer := N_BITS - EXPONENT_BITS - SIGN_BITS;
 
     -- FP representation of zero
     constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
     -- Maximum representable FP number
     constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := "0" & "11111110" & "11111111111111111111111";
 
-    constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed(127, EXPONENT_BITS+1);
-    constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(254, EXPONENT_BITS+1);
+    constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed((2**EXPONENT_BITS)/2-1, EXPONENT_BITS+1);
+    constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned((2**EXPONENT_BITS)-2, EXPONENT_BITS+1);
     constant MIN_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(1, EXPONENT_BITS+1);
 
     constant SIGN_START_BIT      : integer := N_BITS - SIGN_BITS;
