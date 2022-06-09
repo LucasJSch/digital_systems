@@ -2,9 +2,6 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
--- TODO: Implement a mux with two channels
-
-
 entity fp_sum is
 	port(
         clk           : in std_logic;
@@ -31,12 +28,12 @@ architecture fp_sum_arch of fp_sum is
     end component;
 
     component normalizer is
-        generic(N: integer:= 4);
+        generic(N: integer:= 4; M: integer := 4);
         port(
             X            : in std_logic_vector(N-1 downto 0);
             g_bit        : std_logic;
-            shifted_bits : out unsigned(N-1 downto 0);
-            Y            : out std_logic
+            shifted_bits : out unsigned(M-1 downto 0);
+            Y            : out std_logic_vector(N-1 downto 0)
         );
     end component;
 
@@ -57,6 +54,7 @@ architecture fp_sum_arch of fp_sum is
     constant EXPONENT_BITS       : integer := 8;
     constant MANTISSA_BITS       : integer := 23;
 	constant N_BITS              : integer := 32;
+	constant MANTISSA_SHIFT_BITS : integer := 8;
 
     -- FP representation of zero
     constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
@@ -90,11 +88,13 @@ architecture fp_sum_arch of fp_sum is
 
     -- Significand registers need two more bit to be able to detect overflow and add the '1' bit on top.
     signal a_mantissa            : unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal a_mantissa_extended   : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal b_mantissa            : unsigned(MANTISSA_BITS downto 0) := (others => '0');
-    signal b_shifted_mantissa    : unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal b_mantissa_pre_shift  : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
+    signal b_shifted_mantissa    : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal aux_mantissa          : unsigned(MANTISSA_BITS*2+1 downto 0) := (others => '0');
-    signal preliminary_mantissa  : unsigned(MANTISSA_BITS downto 0) := (others => '0');
-    signal preliminary_mantissa_2: unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal preliminary_mantissa  : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
+    signal preliminary_mantissa_2: unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal normalized_mantissa   : unsigned(MANTISSA_BITS downto 0) := (others => '0');
     signal final_mantissa        : unsigned(MANTISSA_BITS downto 0) := (others => '0');
 
@@ -103,8 +103,8 @@ architecture fp_sum_arch of fp_sum is
     signal mantissa_selection    : std_logic_vector(1 downto 0) := (others => '0');
     signal carry_out             : std_logic := '0';
 
-    signal shift_exp_bits        : signed(MANTISSA_BITS downto 0);
-    signal shifted_mantissa_bits : unsigned(MANTISSA_BITS downto 0);
+    signal shift_exp_bits        : unsigned(EXPONENT_BITS-1 downto 0) := (others => '0');
+    -- signal shifted_mantissa_bits : unsigned(EXPONENT_BITS-1 downto 0);
     signal flag_bits             : std_logic_vector(7 downto 0);
     signal g_bit                 : std_logic := '0';
     signal r_bit                 : std_logic := '0';
@@ -129,7 +129,7 @@ begin
 
     -- Step 1: Checking lowest exponent
     are_swapped <= '0' when 
-                   (a(EXPONENT_START_BIT downto EXPONENT_END_BIT) > b(EXPONENT_START_BIT downto EXPONENT_END_BIT)) 
+                   (signed(a(EXPONENT_START_BIT downto EXPONENT_END_BIT)) > signed(b(EXPONENT_START_BIT downto EXPONENT_END_BIT))) 
                    else '1';
     
     a_exp_mux : mux
@@ -152,12 +152,8 @@ begin
         sel => exp_selection,
         signed(Y)	=> b_exp);
 
-    process(clk)
-    begin
-        if rising_edge(clk) then
-            exp_selection <= "00" when are_swapped = '1' else "11"; 
-        end if;
-    end process;
+    exp_selection <= "00" when are_swapped = '0' else "11"; 
+    shift_exp_bits <= unsigned(a_exp - b_exp);
     
     -- Step 2: Check different signs
     xor_sign <= a(SIGN_START_BIT) xor b(SIGN_START_BIT);
@@ -182,46 +178,48 @@ begin
         sel => mantissa_selection,
         unsigned(Y)	=> b_mantissa);
 
-    process(clk)
+    process(a_mantissa)
     begin
-        if rising_edge(clk) then
-            mantissa_selection <= "00" when (are_swapped = '0' and xor_sign = '0') else
-                                  "01" when (are_swapped = '0' and xor_sign = '1') else
-                                  "10" when (are_swapped = '1' and xor_sign = '0') else
-                                  "11" when (are_swapped = '1' and xor_sign = '1'); 
-        end if;
+        a_mantissa_extended <= (a_mantissa) & (a_mantissa_extended'length-1-a_mantissa'length downto 0 => '0');
+    end process;
+
+    process(are_swapped, xor_sign)
+    begin
+        mantissa_selection <= "00" when (are_swapped = '0' and xor_sign = '0') else
+                              "01" when (are_swapped = '0' and xor_sign = '1') else
+                              "10" when (are_swapped = '1' and xor_sign = '0') else
+                              "11" when (are_swapped = '1' and xor_sign = '1'); 
+    end process;
+
+    process(b_mantissa)
+    begin
+        b_mantissa_pre_shift <= (b_mantissa) & (b_mantissa_pre_shift'length-1-b_mantissa'length downto 0 => '0'); 
     end process;
 
     -- Step 3: Shifting the B register according to the exponent difference
-    process(a_exp, b_exp)
+    process(shift_exp_bits, b_mantissa_pre_shift)
     begin
-        shift_exp_bits <= a_exp - b_exp;
-        if (shift_exp_bits < MANTISSA_BITS) then
-            b_shifted_mantissa <= shift_right(b_mantissa, to_integer(shift_exp_bits)) when xor_sign = '0' else
-                                  unsigned(shift_right(signed(b_mantissa), to_integer(shift_exp_bits)));
-            flag_bits <= std_logic_vector(rotate_right(b_mantissa, to_integer(shift_exp_bits))(MANTISSA_BITS downto MANTISSA_BITS-7)) when xor_sign = '0' else
-                         std_logic_vector(rotate_right(signed(b_mantissa), to_integer(shift_exp_bits))(MANTISSA_BITS downto MANTISSA_BITS-7));
-        else
-            b_shifted_mantissa <= (others => '0');
-            -- TODO: In some cases this won't be correct.
-            flag_bits <= std_logic_vector(rotate_right(b_mantissa, to_integer(shift_exp_bits))(MANTISSA_BITS downto MANTISSA_BITS-7)) when xor_sign = '0' else
-                         std_logic_vector(rotate_right(signed(b_mantissa), to_integer(shift_exp_bits))(MANTISSA_BITS downto MANTISSA_BITS-7));
-        end if;
+        b_shifted_mantissa <= shift_right(b_mantissa_pre_shift, to_integer(shift_exp_bits));
+    end process;
+    
+    process(b_shifted_mantissa)
+    begin
+        flag_bits <= std_logic_vector(b_shifted_mantissa(7 downto 0));
     end process;
 
     process(flag_bits)
     begin
-        g_bit <= flag_bits(flag_bits'left);
+        g_bit <= flag_bits(7);
         r_bit <= flag_bits(6);
         s_bit <= '0' when flag_bits(5 downto 0) = "000000" else '1';
     end process;
 
     -- Step 4: Compute preliminary mantissa
     preliminary_mantissa_adder : adder
-    generic map(MANTISSA_BITS+1)
+    generic map(a_mantissa_extended'length)
     port map (
         X0          => std_logic_vector(b_shifted_mantissa),
-        X1          => std_logic_vector(a_mantissa),	
+        X1          => std_logic_vector(a_mantissa_extended),	
         carry_in    => '0',
         unsigned(Y) => preliminary_mantissa,
         carry_out   => carry_out);
@@ -235,46 +233,43 @@ begin
     end process;
 
     -- Step 5: Compute final mantissa
-    -- process(preliminary_mantissa_2, xor_sign, carry_out)
-    -- begin
-        mantissa_normalizer : normalizer
-        generic map(MANTISSA_BITS+1)
-        port map (
-            X            => std_logic_vector(preliminary_mantissa_2),
-            g_bit        => g_bit,	
-            shifted_bits => shifted_mantissa_bits,
-            unsigned(Y)  => normalized_mantissa);
-        
-        final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 1)) when (xor_sign = '0' and carry_out = '1') else
-                          normalized_mantissa;
+    -- mantissa_normalizer : normalizer
+    -- generic map(MANTISSA_BITS+1, EXPONENT_BITS)
+    -- port map (
+    --     X            => std_logic_vector(preliminary_mantissa_2),
+    --     g_bit        => g_bit,	
+    --     shifted_bits => shifted_mantissa_bits,
+    --     unsigned(Y)  => normalized_mantissa);
     
-        final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
-    -- end process;
+    -- final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 1)) when (xor_sign = '0' and carry_out = '1') else
+    --                     normalized_mantissa;
+
+    -- final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
-    -- Step 6: Adjust 'r' and 's' bits
-    -- TODO: Do this with muxes.
-    r_bit_final <= preliminary_mantissa_2(preliminary_mantissa_2'right) when (xor_sign = '0' and carry_out = '1') else
-                   g_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
-                   r_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
-                   '0';
+    -- -- Step 6: Adjust 'r' and 's' bits
+    -- -- TODO: Do this with muxes.
+    -- r_bit_final <= preliminary_mantissa_2(preliminary_mantissa_2'right) when (xor_sign = '0' and carry_out = '1') else
+    --                g_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
+    --                r_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
+    --                '0';
              
-    s_bit_final <= (g_bit or s_bit or r_bit) when (xor_sign = '0' and carry_out = '1') else
-                   (r_bit or s_bit) when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
-                   s_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
-                   '0';
+    -- s_bit_final <= (g_bit or s_bit or r_bit) when (xor_sign = '0' and carry_out = '1') else
+    --                (r_bit or s_bit) when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
+    --                s_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
+    --                '0';
 
-    -- Step 7a: Rounding the mantissa
-    -- result_mantissa <= final_mantissa + 1 when (rounding_mode = "00" and (r or s) = '1' and xor_sign = '0') else
-    --                    final_mantissa + 1 when (rounding_mode = "01" and (r or s) = '1' and xor_sign = '1') else
-    --                    (others => '0') when (rounding_mode = "10") else
-    --                    final_mantissa + 1 when (rounding_mode = "11" and ((r and s) = '1' or (r and ) = '1')) else
-    --                    final_mantissa;
+    -- -- Step 7a: Rounding the mantissa
+    -- -- result_mantissa <= final_mantissa + 1 when (rounding_mode = "00" and (r or s) = '1' and xor_sign = '0') else
+    -- --                    final_mantissa + 1 when (rounding_mode = "01" and (r or s) = '1' and xor_sign = '1') else
+    -- --                    (others => '0') when (rounding_mode = "10") else
+    -- --                    final_mantissa + 1 when (rounding_mode = "11" and ((r and s) = '1' or (r and ) = '1')) else
+    -- --                    final_mantissa;
     
-    -- Step 7b: Checking for carry-out
+    -- -- Step 7b: Checking for carry-out
 
-    -- Step 8: Computing the result's sign
-    result_sign <= b(SIGN_START_BIT) when (are_swapped = '1') else
-                   a(SIGN_START_BIT) when (are_swapped = '0' and xor_sign = '0') else
-                   b(SIGN_START_BIT) when (are_swapped = '0' and xor_sign = '1');
+    -- -- Step 8: Computing the result's sign
+    -- result_sign <= b(SIGN_START_BIT) when (are_swapped = '1') else
+    --                a(SIGN_START_BIT) when (are_swapped = '0' and xor_sign = '0') else
+    --                b(SIGN_START_BIT) when (are_swapped = '0' and xor_sign = '1');
 
 end;
