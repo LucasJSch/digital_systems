@@ -17,7 +17,7 @@ end entity;
 architecture fp_mul_arch of fp_mul is
 
     component mux is
-        generic(N : integer:= 32);
+        generic(N : integer:= N_BITS);
         port (
             X0  : in std_logic_vector(N-1 downto 0);
             X1  : in std_logic_vector(N-1 downto 0);
@@ -36,7 +36,8 @@ architecture fp_mul_arch of fp_mul is
     -- FP representation of zero
     constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
     -- Maximum representable FP number
-    constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := "0" & "11111110" & "11111111111111111111111";
+    constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := 
+        '0' & (N_BITS-2 downto N_BITS-EXPONENT_BITS-1 => '1') & (N_BITS-EXPONENT_BITS-2 => '0') & (N_BITS-EXPONENT_BITS-3 downto 0 => '1');
 
     constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed((2**EXPONENT_BITS)/2-1, EXPONENT_BITS+1);
     constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned((2**EXPONENT_BITS)-2, EXPONENT_BITS+1);
@@ -80,7 +81,7 @@ begin
 
     -- Compute mantissa
     a_mantissa <= unsigned("1" & a(MANTISSA_START_BIT downto MANTISSA_END_BIT));
-    b_mantissa <= unsigned("1" & a(MANTISSA_START_BIT downto MANTISSA_END_BIT));
+    b_mantissa <= unsigned("1" & b(MANTISSA_START_BIT downto MANTISSA_END_BIT));
     aux_mantissa <= a_mantissa * b_mantissa;
 
     -- Shifting mantissa if necessary

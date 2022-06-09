@@ -23,8 +23,8 @@ architecture fp_mul_tb_arch of fp_mul_tb is
 begin
 
 	clk_tb <= not clk_tb after 15 ps;
-	a_tb <= '1' & "10000000" & "00000000000000000010101";
-	b_tb <= '0' & "10000001" & "00000000000000000001110";
+	a_tb <= "11111111011111111111111111111111";
+	b_tb <= "00111111010000010110111100101011";
 
 	DUT: fp_mul
 		port map(
