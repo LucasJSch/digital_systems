@@ -28,7 +28,7 @@ architecture fp_sum_tb_arch of fp_sum_tb is
 begin
 
 	clk_tb <= not clk_tb after 15 ps;
-	a_tb <= '1' & "10000000" & "10000000000000000000000";
+	a_tb <= '1' & "10000000" & "10000000000001111000001";
 	b_tb <= '0' & "10000001" & "00101010101001010101001";
 
 	DUT: fp_sum

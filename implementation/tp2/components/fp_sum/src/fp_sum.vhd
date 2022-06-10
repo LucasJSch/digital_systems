@@ -119,7 +119,7 @@ architecture fp_sum_arch of fp_sum is
         return std_logic_vector(resize(unsigned(not X) + to_unsigned(1, X'length), X'length));
     end A2_COMPLEMENT;
 
-    function A2_COMPLEMENT2(X : std_logic_vector(preliminary_mantissa'length-2 downto 0))
+    function A2_COMPLEMENT2(X : std_logic_vector(preliminary_mantissa'length-1 downto 0))
     return std_logic_vector is
     begin
         return std_logic_vector(resize(unsigned(not X) + to_unsigned(1, X'length), X'length));
