@@ -95,7 +95,7 @@ architecture fp_sum_arch of fp_sum is
     signal aux_mantissa          : unsigned(MANTISSA_BITS*2+1 downto 0) := (others => '0');
     signal preliminary_mantissa  : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal preliminary_mantissa_2: unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
-    signal normalized_mantissa   : unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal normalized_mantissa   : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal final_mantissa        : unsigned(MANTISSA_BITS downto 0) := (others => '0');
 
     signal are_swapped           : std_logic := '0';
@@ -104,7 +104,7 @@ architecture fp_sum_arch of fp_sum is
     signal carry_out             : std_logic := '0';
 
     signal shift_exp_bits        : unsigned(EXPONENT_BITS-1 downto 0) := (others => '0');
-    -- signal shifted_mantissa_bits : unsigned(EXPONENT_BITS-1 downto 0);
+    signal shifted_mantissa_bits : unsigned(EXPONENT_BITS-1 downto 0);
     signal flag_bits             : std_logic_vector(7 downto 0);
     signal g_bit                 : std_logic := '0';
     signal r_bit                 : std_logic := '0';
@@ -233,13 +233,13 @@ begin
     end process;
 
     -- Step 5: Compute final mantissa
-    -- mantissa_normalizer : normalizer
-    -- generic map(MANTISSA_BITS+1, EXPONENT_BITS)
-    -- port map (
-    --     X            => std_logic_vector(preliminary_mantissa_2),
-    --     g_bit        => g_bit,	
-    --     shifted_bits => shifted_mantissa_bits,
-    --     unsigned(Y)  => normalized_mantissa);
+    mantissa_normalizer : normalizer
+    generic map(preliminary_mantissa_2'length, EXPONENT_BITS)
+    port map (
+        X            => std_logic_vector(preliminary_mantissa_2),
+        g_bit        => g_bit,	
+        shifted_bits => shifted_mantissa_bits,
+        unsigned(Y)  => normalized_mantissa);
     
     -- final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 1)) when (xor_sign = '0' and carry_out = '1') else
     --                     normalized_mantissa;
