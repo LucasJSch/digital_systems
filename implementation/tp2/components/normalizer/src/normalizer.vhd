@@ -22,7 +22,10 @@ begin
         variable shifted_bits_aux : out_shifted_bits_type;
         begin
             for i in 0 to N-1 loop
-                if (i = 0) then
+                if (X(X'left) = '1') then
+                    out_aux(N-1) := X;
+                    shifted_bits_aux(N-1) := (others => '0');
+                elsif (i = 0) then
                     out_aux(i) := X(N-2 downto 0) & g_bit;
                     shifted_bits_aux(i) := (0 => '1', others => '0');
                 elsif (out_aux(i-1)(N-1) = '1') then
