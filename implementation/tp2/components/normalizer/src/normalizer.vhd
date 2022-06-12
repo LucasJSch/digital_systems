@@ -17,7 +17,7 @@ architecture normalizer_arch of normalizer is
 begin
     process (X, g_bit)
         type out_array_type        is array (0 to N-1) of std_logic_vector(N-1 downto 0);
-        type out_shifted_bits_type is array (0 to N-1) of unsigned(N-1 downto 0);
+        type out_shifted_bits_type is array (0 to N-1) of unsigned(M-1 downto 0);
         variable out_aux : out_array_type;
         variable shifted_bits_aux : out_shifted_bits_type;
         begin
