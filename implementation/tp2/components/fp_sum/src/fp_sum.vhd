@@ -6,9 +6,9 @@ entity fp_sum is
 	port(
         clk           : in std_logic;
 		a             : in std_logic_vector(31 downto 0);
+		b             : in std_logic_vector(31 downto 0);
         -- TODO: Make this a type.
         rounding_mode : in std_logic_vector(1 downto 0);
-		b             : out std_logic_vector(31 downto 0);
 		z             : out std_logic_vector(31 downto 0)
 	);
 end entity;
@@ -65,8 +65,8 @@ architecture fp_sum_arch of fp_sum is
     constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(254, EXPONENT_BITS+1);
     constant MIN_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(1, EXPONENT_BITS+1);
 
-    constant SIGN_START_BIT      : integer := N_BITS - SIGN_BITS;
-    constant SIGN_END_BIT        : integer := SIGN_START_BIT - SIGN_BITS + 1;
+    constant SIGN_BIT      : integer := N_BITS - SIGN_BITS;
+    constant SIGN_END_BIT        : integer := SIGN_BIT - SIGN_BITS + 1;
 
     constant EXPONENT_START_BIT  : integer := SIGN_END_BIT - 1;
     constant EXPONENT_END_BIT    : integer := EXPONENT_START_BIT - EXPONENT_BITS + 1;
@@ -76,8 +76,7 @@ architecture fp_sum_arch of fp_sum is
 
 
     signal result_sign           : std_logic := '0';
-	signal result_exponent       : unsigned(EXPONENT_BITS+1 downto 0) := (others => '0');
-	signal result_mantissa       : unsigned(MANTISSA_BITS-1 downto 0) := (others => '0');
+	-- signal result_mantissa       : unsigned(MANTISSA_BITS-1 downto 0) := (others => '0');
 
     signal xor_sign              : std_logic := '0';
     -- Exponent registers need one more bit to be able to compute the unsigned operations.
@@ -155,7 +154,7 @@ begin
     shift_exp_bits <= unsigned(a_exp - b_exp);
     
     -- Step 2: Check different signs
-    xor_sign <= a(SIGN_START_BIT) xor b(SIGN_START_BIT);
+    xor_sign <= a(SIGN_BIT) xor b(SIGN_BIT);
 
     a_mantissa_mux : mux
     generic map(MANTISSA_BITS+1)
@@ -245,30 +244,31 @@ begin
 
     final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
-    -- -- Step 6: Adjust 'r' and 's' bits
-    -- -- TODO: Do this with muxes.
-    -- r_bit_final <= preliminary_mantissa_2(preliminary_mantissa_2'right) when (xor_sign = '0' and carry_out = '1') else
-    --                g_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
-    --                r_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
-    --                '0';
+    -- Step 6: Adjust 'r' and 's' bits
+    -- TODO: Do this with muxes.
+    r_bit_final <= preliminary_mantissa_2(preliminary_mantissa_2'right) when (xor_sign = '0' and carry_out = '1') else
+                   g_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
+                   r_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
+                   '0';
              
-    -- s_bit_final <= (g_bit or s_bit or r_bit) when (xor_sign = '0' and carry_out = '1') else
-    --                (r_bit or s_bit) when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
-    --                s_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
-    --                '0';
+    s_bit_final <= (g_bit or s_bit or r_bit) when (xor_sign = '0' and carry_out = '1') else
+                   (r_bit or s_bit) when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
+                   s_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
+                   '0';
 
     -- -- Step 7a: Rounding the mantissa
-    -- -- result_mantissa <= final_mantissa + 1 when (rounding_mode = "00" and (r or s) = '1' and xor_sign = '0') else
-    -- --                    final_mantissa + 1 when (rounding_mode = "01" and (r or s) = '1' and xor_sign = '1') else
-    -- --                    (others => '0') when (rounding_mode = "10") else
-    -- --                    final_mantissa + 1 when (rounding_mode = "11" and ((r and s) = '1' or (r and ) = '1')) else
-    -- --                    final_mantissa;
+    -- result_mantissa <= final_mantissa + 1 when (rounding_mode = "00" and (r or s) = '1' and xor_sign = '0') else
+    --                    final_mantissa + 1 when (rounding_mode = "01" and (r or s) = '1' and xor_sign = '1') else
+    --                    (others => '0') when (rounding_mode = "10") else
+    --                    final_mantissa + 1 when (rounding_mode = "11" and ((r and s) = '1' or (r and ) = '1')) else
+    --                    final_mantissa;
     
     -- -- Step 7b: Checking for carry-out
 
     -- -- Step 8: Computing the result's sign
-    -- result_sign <= b(SIGN_START_BIT) when (are_swapped = '1') else
-    --                a(SIGN_START_BIT) when (are_swapped = '0' and xor_sign = '0') else
-    --                b(SIGN_START_BIT) when (are_swapped = '0' and xor_sign = '1');
+    result_sign <= b(SIGN_BIT) when (are_swapped = '1') else
+                   a(SIGN_BIT) when (are_swapped = '0' and xor_sign = '0') else
+                   b(SIGN_BIT) when (are_swapped = '0' and xor_sign = '1');
 
+    z <= result_sign & std_logic_vector(final_mantissa(MANTISSA_BITS-1 downto 0)) & std_logic_vector(final_exp);
 end;

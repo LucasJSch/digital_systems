@@ -11,7 +11,7 @@ architecture fp_sum_tb_arch of fp_sum_tb is
 			clk           : in std_logic;
 			a             : in std_logic_vector(31 downto 0);
 			rounding_mode : in std_logic_vector(1 downto 0);
-			b             : out std_logic_vector(31 downto 0);
+			b             : in std_logic_vector(31 downto 0);
 			z             : out std_logic_vector(31 downto 0)
 		);
     end component;
