@@ -83,7 +83,6 @@ architecture fp_sum_arch of fp_sum is
     -- Exponent registers need one more bit to be able to compute the unsigned operations.
     signal a_exp                 : signed(EXPONENT_BITS-1 downto 0) := (others => '0');
     signal b_exp                 : signed(EXPONENT_BITS-1 downto 0) := (others => '0');
-    signal aux_exp               : signed(EXPONENT_BITS-1 downto 0) := (others => '0');
     signal final_exp             : signed(EXPONENT_BITS-1 downto 0) := (others => '0');
 
     -- Significand registers need two more bit to be able to detect overflow and add the '1' bit on top.
@@ -241,10 +240,10 @@ begin
         shifted_bits => shifted_mantissa_bits,
         unsigned(Y)  => normalized_mantissa);
     
-    -- final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 1)) when (xor_sign = '0' and carry_out = '1') else
-    --                     normalized_mantissa;
+    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 1)) when (xor_sign = '0' and carry_out = '1') else
+                        normalized_mantissa(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto MANTISSA_SHIFT_BITS);
 
-    -- final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
+    final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
     -- -- Step 6: Adjust 'r' and 's' bits
     -- -- TODO: Do this with muxes.
