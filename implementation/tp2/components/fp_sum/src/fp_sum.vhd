@@ -56,15 +56,6 @@ architecture fp_sum_arch of fp_sum is
 	constant N_BITS              : integer := 32;
 	constant MANTISSA_SHIFT_BITS : integer := 8;
 
-    -- FP representation of zero
-    constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
-    -- Maximum representable FP number
-    constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := "0" & "11111110" & "11111111111111111111111";
-
-    constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed(127, EXPONENT_BITS+1);
-    constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(254, EXPONENT_BITS+1);
-    constant MIN_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(1, EXPONENT_BITS+1);
-
     constant SIGN_BIT      : integer := N_BITS - SIGN_BITS;
     constant SIGN_END_BIT        : integer := SIGN_BIT - SIGN_BITS + 1;
 
@@ -90,11 +81,13 @@ architecture fp_sum_arch of fp_sum is
     signal b_mantissa            : unsigned(MANTISSA_BITS downto 0) := (others => '0');
     signal b_mantissa_pre_shift  : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal b_shifted_mantissa    : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
+    -- b_shifted_mantissa Without flag bits
+    signal b_shifted_mantissa_2  : unsigned(MANTISSA_BITS downto 0) := (others => '0');
     signal aux_mantissa          : unsigned(MANTISSA_BITS*2+1 downto 0) := (others => '0');
-    signal preliminary_mantissa  : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
-    signal preliminary_mantissa_2: unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
-    signal normalized_mantissa   : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
-    signal final_mantissa        : unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal preliminary_mantissa  : unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal preliminary_mantissa_2: unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal normalized_mantissa   : unsigned(MANTISSA_BITS downto 0) := (others => '0');
+    signal final_mantissa        : unsigned(MANTISSA_BITS-1 downto 0) := (others => '0');
 
     signal are_swapped           : std_logic := '0';
     signal exp_selection         : std_logic_vector(1 downto 0) := (others => '0');
@@ -203,6 +196,7 @@ begin
     process(b_shifted_mantissa)
     begin
         flag_bits <= std_logic_vector(b_shifted_mantissa(7 downto 0));
+        b_shifted_mantissa_2 <= b_shifted_mantissa(b_shifted_mantissa'length-1 downto MANTISSA_SHIFT_BITS);
     end process;
 
     process(flag_bits)
@@ -214,10 +208,10 @@ begin
 
     -- Step 4: Compute preliminary mantissa
     preliminary_mantissa_adder : adder
-    generic map(a_mantissa_extended'length)
+    generic map(a_mantissa'length)
     port map (
-        X0          => std_logic_vector(b_shifted_mantissa),
-        X1          => std_logic_vector(a_mantissa_extended),	
+        X0          => std_logic_vector(b_shifted_mantissa_2),
+        X1          => std_logic_vector(a_mantissa),	
         carry_in    => '0',
         unsigned(Y) => preliminary_mantissa,
         carry_out   => carry_out);
@@ -239,8 +233,8 @@ begin
         shifted_bits => shifted_mantissa_bits,
         unsigned(Y)  => normalized_mantissa);
     
-    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 1)) when (xor_sign = '0' and carry_out = '1') else
-                        normalized_mantissa(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto MANTISSA_SHIFT_BITS);
+    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS-2 downto 0)) when (xor_sign = '0' and carry_out = '1') else
+                        normalized_mantissa(MANTISSA_BITS-1 downto 0);
 
     final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
@@ -270,5 +264,5 @@ begin
                    a(SIGN_BIT) when (are_swapped = '0' and xor_sign = '0') else
                    b(SIGN_BIT) when (are_swapped = '0' and xor_sign = '1');
 
-    z <= result_sign & std_logic_vector(final_mantissa(MANTISSA_BITS-1 downto 0)) & std_logic_vector(final_exp);
+    z <= result_sign & std_logic_vector(final_exp) & std_logic_vector(final_mantissa);
 end;
