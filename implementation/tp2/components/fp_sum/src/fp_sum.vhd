@@ -77,7 +77,6 @@ architecture fp_sum_arch of fp_sum is
 
     -- Significand registers need two more bit to be able to detect overflow and add the '1' bit on top.
     signal a_mantissa            : unsigned(MANTISSA_BITS downto 0) := (others => '0');
-    signal a_mantissa_extended   : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal b_mantissa            : unsigned(MANTISSA_BITS downto 0) := (others => '0');
     signal b_mantissa_pre_shift  : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
     signal b_shifted_mantissa    : unsigned(MANTISSA_BITS+MANTISSA_SHIFT_BITS downto 0) := (others => '0');
@@ -97,6 +96,7 @@ architecture fp_sum_arch of fp_sum is
     signal shift_exp_bits        : unsigned(EXPONENT_BITS-1 downto 0) := (others => '0');
     signal shifted_mantissa_bits : unsigned(EXPONENT_BITS-1 downto 0);
     signal flag_bits             : std_logic_vector(7 downto 0);
+    signal mantissa_complemented : std_logic := '0';
     signal g_bit                 : std_logic := '0';
     signal r_bit                 : std_logic := '0';
     signal r_bit_final           : std_logic := '0';
@@ -169,11 +169,6 @@ begin
         sel => mantissa_selection,
         unsigned(Y)	=> b_mantissa);
 
-    process(a_mantissa)
-    begin
-        a_mantissa_extended <= (a_mantissa) & (a_mantissa_extended'length-1-a_mantissa'length downto 0 => '0');
-    end process;
-
     process(are_swapped, xor_sign)
     begin
         mantissa_selection <= "00" when (are_swapped = '0' and xor_sign = '0') else
@@ -190,7 +185,11 @@ begin
     -- Step 3: Shifting the B register according to the exponent difference
     process(shift_exp_bits, b_mantissa_pre_shift)
     begin
-        b_shifted_mantissa <= shift_right(b_mantissa_pre_shift, to_integer(shift_exp_bits));
+        if xor_sign = '0' then
+            b_shifted_mantissa <= shift_right(unsigned(b_mantissa_pre_shift), to_integer(shift_exp_bits));
+        else
+            b_shifted_mantissa <= unsigned(shift_right(signed(b_mantissa_pre_shift), to_integer(shift_exp_bits)));
+        end if;
     end process;
     
     process(b_shifted_mantissa)
@@ -219,6 +218,7 @@ begin
     begin
         if (xor_sign = '1' and preliminary_mantissa(preliminary_mantissa'left) = '1' and carry_out = '0') then
             preliminary_mantissa_2 <= unsigned(A2_COMPLEMENT2(std_logic_vector(preliminary_mantissa)));
+            mantissa_complemented <= '1';
         else
             preliminary_mantissa_2 <= preliminary_mantissa;
         end if;
@@ -259,10 +259,10 @@ begin
     
     -- -- Step 7b: Checking for carry-out
 
-    -- -- Step 8: Computing the result's sign
+    -- Step 8: Computing the result's sign
+    -- TODO: This may not be correct in some cases.
     result_sign <= b(SIGN_BIT) when (are_swapped = '1') else
-                   a(SIGN_BIT) when (are_swapped = '0' and xor_sign = '0') else
-                   b(SIGN_BIT) when (are_swapped = '0' and xor_sign = '1');
+                   a(SIGN_BIT);
 
     z <= result_sign & std_logic_vector(final_exp) & std_logic_vector(final_mantissa);
 end;
