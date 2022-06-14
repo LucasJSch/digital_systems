@@ -120,7 +120,7 @@ begin
 
     -- Step 1: Checking lowest exponent
     are_swapped <= '0' when 
-                   (signed(a(EXPONENT_START_BIT downto EXPONENT_END_BIT)) > signed(b(EXPONENT_START_BIT downto EXPONENT_END_BIT))) 
+                   (signed(a(EXPONENT_START_BIT downto EXPONENT_END_BIT)) >= signed(b(EXPONENT_START_BIT downto EXPONENT_END_BIT))) 
                    else '1';
     
     a_exp_mux : mux
@@ -233,10 +233,10 @@ begin
         shifted_bits => shifted_mantissa_bits,
         unsigned(Y)  => normalized_mantissa);
     
-    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS-2 downto 0)) when (xor_sign = '0' and carry_out = '1') else
+    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 2)) when (xor_sign = '0' and carry_out = '1') else
                         normalized_mantissa(MANTISSA_BITS-1 downto 0);
 
-    final_exp  <= a_exp when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
+    final_exp  <= a_exp+1 when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
     -- Step 6: Adjust 'r' and 's' bits
     -- TODO: Do this with muxes.
