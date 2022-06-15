@@ -233,7 +233,7 @@ begin
         shifted_bits => shifted_mantissa_bits,
         unsigned(Y)  => normalized_mantissa);
     
-    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 2)) when (xor_sign = '0' and carry_out = '1') else
+    final_mantissa <= (preliminary_mantissa_2(MANTISSA_BITS downto 2) & '1') when (xor_sign = '0' and carry_out = '1') else
                         normalized_mantissa(MANTISSA_BITS-1 downto 0);
 
     final_exp  <= a_exp+1 when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
