@@ -28,8 +28,8 @@ architecture fp_sum_tb_arch of fp_sum_tb is
 begin
 
 	clk_tb <= not clk_tb after 15 ps;
-	a_tb <= "00111110100011010101010100111001";
-	b_tb <= "00111110101100111111010101011001";
+	a_tb <= "00111100110001101100100111010111";
+	b_tb <= "10111010110010111101000100011011";
 
 	DUT: fp_sum
 		port map(

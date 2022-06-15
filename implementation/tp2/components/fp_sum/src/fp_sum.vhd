@@ -42,10 +42,10 @@ architecture fp_sum_arch of fp_sum is
         port(
             X0        : in std_logic_vector(N-1 downto 0);
             X1        : in std_logic_vector(N-1 downto 0);
-            carry_in  : in std_logic;
-            Y         : out std_logic_vector(N-1 downto 0);
-            carry_out : out std_logic
-        );
+			substract : in std_logic;
+			swap_ops  : in std_logic;
+			Y         : out std_logic_vector(N-1 downto 0);
+            carry_out : out std_logic);
     end component;
 
     -- Order of bits:
@@ -92,11 +92,12 @@ architecture fp_sum_arch of fp_sum is
     signal exp_selection         : std_logic_vector(1 downto 0) := (others => '0');
     signal mantissa_selection    : std_logic_vector(1 downto 0) := (others => '0');
     signal carry_out             : std_logic := '0';
+    signal substract_bit         : std_logic := '0';
+    signal swap_ops_bit          : std_logic := '0';
 
     signal shift_exp_bits        : unsigned(EXPONENT_BITS-1 downto 0) := (others => '0');
     signal shifted_mantissa_bits : unsigned(EXPONENT_BITS-1 downto 0);
     signal flag_bits             : std_logic_vector(7 downto 0);
-    signal mantissa_complemented : std_logic := '0';
     signal g_bit                 : std_logic := '0';
     signal r_bit                 : std_logic := '0';
     signal r_bit_final           : std_logic := '0';
@@ -104,7 +105,7 @@ architecture fp_sum_arch of fp_sum is
     signal s_bit_final           : std_logic := '0';
 
 
-    function A2_COMPLEMENT(X : std_logic_vector(b_mantissa'length-2 downto 0))
+    function A2_COMPLEMENT(X : std_logic_vector(b_mantissa'length-1 downto 0))
     return std_logic_vector is
     begin
         return std_logic_vector(resize(unsigned(not X) + to_unsigned(1, X'length), X'length));
@@ -163,9 +164,9 @@ begin
     generic map(MANTISSA_BITS+1)
     port map (
         X0  => "1" & b(MANTISSA_START_BIT downto MANTISSA_END_BIT),
-        X1  => "1" & (A2_COMPLEMENT(std_logic_vector(b(MANTISSA_START_BIT downto MANTISSA_END_BIT)))),	
+        X1  => "1" & b(MANTISSA_START_BIT downto MANTISSA_END_BIT),	
         X2  => "1" & a(MANTISSA_START_BIT downto MANTISSA_END_BIT),
-        X3  => "1" & (A2_COMPLEMENT(std_logic_vector(a(MANTISSA_START_BIT downto MANTISSA_END_BIT)))),
+        X3  => "1" & a(MANTISSA_START_BIT downto MANTISSA_END_BIT),
         sel => mantissa_selection,
         unsigned(Y)	=> b_mantissa);
 
@@ -185,11 +186,11 @@ begin
     -- Step 3: Shifting the B register according to the exponent difference
     process(shift_exp_bits, b_mantissa_pre_shift)
     begin
-        if xor_sign = '0' then
+        -- if xor_sign = '0' then
             b_shifted_mantissa <= shift_right(unsigned(b_mantissa_pre_shift), to_integer(shift_exp_bits));
-        else
-            b_shifted_mantissa <= unsigned(shift_right(signed(b_mantissa_pre_shift), to_integer(shift_exp_bits)));
-        end if;
+        -- else
+            -- b_shifted_mantissa <= unsigned(shift_right(signed(b_mantissa_pre_shift), to_integer(shift_exp_bits)));
+        -- end if;
     end process;
     
     process(b_shifted_mantissa)
@@ -209,21 +210,28 @@ begin
     preliminary_mantissa_adder : adder
     generic map(a_mantissa'length)
     port map (
-        X0          => std_logic_vector(b_shifted_mantissa_2),
-        X1          => std_logic_vector(a_mantissa),	
-        carry_in    => '0',
+        X0          => std_logic_vector(a_mantissa),	
+        X1          => std_logic_vector(b_shifted_mantissa_2),
+        substract   => substract_bit,
+        swap_ops    => swap_ops_bit,
         unsigned(Y) => preliminary_mantissa,
         carry_out   => carry_out);
-    process(preliminary_mantissa, carry_out, xor_sign)
+
+    process(preliminary_mantissa, xor_sign)
     begin
-        if (xor_sign = '1' and preliminary_mantissa(preliminary_mantissa'left) = '1' and carry_out = '0') then
-            preliminary_mantissa_2 <= unsigned(A2_COMPLEMENT2(std_logic_vector(preliminary_mantissa)));
-            mantissa_complemented <= '1';
+        if (xor_sign = '0') then
+            swap_ops_bit <= '0';
+            substract_bit <= '0';
+        elsif unsigned(a_mantissa) >= unsigned(b_shifted_mantissa_2) then
+            swap_ops_bit <= '0';
+            substract_bit <= '1';
         else
-            preliminary_mantissa_2 <= preliminary_mantissa;
+            swap_ops_bit <= '1';
+            substract_bit <= '1';
         end if;
     end process;
-
+    preliminary_mantissa_2 <= preliminary_mantissa;
+    
     -- Step 5: Compute final mantissa
     mantissa_normalizer : normalizer
     generic map(preliminary_mantissa_2'length, EXPONENT_BITS)
@@ -233,10 +241,10 @@ begin
         shifted_bits => shifted_mantissa_bits,
         unsigned(Y)  => normalized_mantissa);
     
-    final_mantissa <= (preliminary_mantissa_2(MANTISSA_BITS downto 2) & '1') when (xor_sign = '0' and carry_out = '1') else
-                        normalized_mantissa(MANTISSA_BITS-1 downto 0);
+    final_mantissa <= ('1' & preliminary_mantissa_2(MANTISSA_BITS downto 2)) when (carry_out = '1') else
+                      normalized_mantissa(MANTISSA_BITS-1 downto 0);
 
-    final_exp  <= a_exp+1 when (xor_sign = '0' and carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
+    final_exp  <= a_exp+1 when (carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
     -- Step 6: Adjust 'r' and 's' bits
     -- TODO: Do this with muxes.
