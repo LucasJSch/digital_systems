@@ -7,8 +7,6 @@ entity fp_sum is
         clk           : in std_logic;
 		a             : in std_logic_vector(31 downto 0);
 		b             : in std_logic_vector(31 downto 0);
-        -- TODO: Make this a type.
-        rounding_mode : in std_logic_vector(1 downto 0);
 		z             : out std_logic_vector(31 downto 0)
 	);
 end entity;
@@ -178,20 +176,8 @@ begin
                               "11" when (are_swapped = '1' and xor_sign = '1'); 
     end process;
 
-    process(b_mantissa)
-    begin
-        b_mantissa_pre_shift <= (b_mantissa) & (b_mantissa_pre_shift'length-1-b_mantissa'length downto 0 => '0'); 
-    end process;
-
-    -- Step 3: Shifting the B register according to the exponent difference
-    process(shift_exp_bits, b_mantissa_pre_shift)
-    begin
-        -- if xor_sign = '0' then
-            b_shifted_mantissa <= shift_right(unsigned(b_mantissa_pre_shift), to_integer(shift_exp_bits));
-        -- else
-            -- b_shifted_mantissa <= unsigned(shift_right(signed(b_mantissa_pre_shift), to_integer(shift_exp_bits)));
-        -- end if;
-    end process;
+    b_mantissa_pre_shift <= (b_mantissa) & (b_mantissa_pre_shift'length-1-b_mantissa'length downto 0 => '0'); 
+    b_shifted_mantissa <= shift_right(unsigned(b_mantissa_pre_shift), to_integer(shift_exp_bits));
     
     process(b_shifted_mantissa)
     begin
@@ -246,29 +232,6 @@ begin
 
     final_exp  <= a_exp+1 when (carry_out = '1') else (a_exp - signed(shifted_mantissa_bits));
     
-    -- Step 6: Adjust 'r' and 's' bits
-    -- TODO: Do this with muxes.
-    r_bit_final <= preliminary_mantissa_2(preliminary_mantissa_2'right) when (xor_sign = '0' and carry_out = '1') else
-                   g_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
-                   r_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
-                   '0';
-             
-    s_bit_final <= (g_bit or s_bit or r_bit) when (xor_sign = '0' and carry_out = '1') else
-                   (r_bit or s_bit) when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else
-                   s_bit when (shifted_mantissa_bits = to_unsigned(0, shifted_mantissa_bits'length)) else 
-                   '0';
-
-    -- -- Step 7a: Rounding the mantissa
-    -- result_mantissa <= final_mantissa + 1 when (rounding_mode = "00" and (r or s) = '1' and xor_sign = '0') else
-    --                    final_mantissa + 1 when (rounding_mode = "01" and (r or s) = '1' and xor_sign = '1') else
-    --                    (others => '0') when (rounding_mode = "10") else
-    --                    final_mantissa + 1 when (rounding_mode = "11" and ((r and s) = '1' or (r and ) = '1')) else
-    --                    final_mantissa;
-    
-    -- -- Step 7b: Checking for carry-out
-
-    -- Step 8: Computing the result's sign
-    -- TODO: This may not be correct in some cases.
     result_sign <= b(SIGN_BIT) when (are_swapped = '1') else
                    a(SIGN_BIT);
 
