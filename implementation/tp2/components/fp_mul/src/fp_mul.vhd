@@ -109,7 +109,7 @@ begin
     process(clk)
     begin
         if rising_edge(clk) then
-	        output_sel <= "00" when (to_integer(unsigned(a(30 downto 0)))= 0 or to_integer(unsigned(b(30 downto 0)))= 0) else
+	        output_sel <= "00" when (to_integer(unsigned(a(N_BITS-2 downto 0)))= 0 or to_integer(unsigned(b(N_BITS-2 downto 0)))= 0) else
                           "01" when (to_integer(signed(result_exponent)) < to_integer(MIN_BIASED_EXPONENT)) else
                           "10" when (to_integer(signed(result_exponent)) > to_integer(MAX_BIASED_EXPONENT)) else
                           "11";
