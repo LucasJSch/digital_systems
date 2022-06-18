@@ -12,8 +12,7 @@ entity fp_math_unit is
 		b             : in std_logic_vector(N_BITS-1 downto 0);
         -- 00: Sum; 01: Substract ; 10: Multiply; 11: Sum.
         ctrl          : in std_logic_vector(1 downto 0);
-		z             : out std_logic_vector(N_BITS-1 downto 0)
-	);
+		z             : out std_logic_vector(N_BITS-1 downto 0));
 end entity;
 
 architecture fp_math_unit_arch of fp_math_unit is

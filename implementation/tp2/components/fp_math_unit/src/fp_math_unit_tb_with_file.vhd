@@ -8,44 +8,39 @@ end entity;
 
 architecture simulacion of testbench is
 	--para seleccionar un archivo modificar N, E y el nombre del archivo
-	constant N: integer :=30;	--numero de bits
-	constant E: integer :=8;	--numero de bits del exponente 
+	constant N_BITS: integer := 32;	--numero de bits
+	constant EXPONENT_BITS: integer := 8;	--numero de bits del exponente 
 	
-	file datos: text open read_mode is "test_mul_float_30_8.txt";
+	file data_file : text open read_mode is "test_mul_float_32_8.txt";
 
-	component multiplicador_ptof is
-	generic(
-		N: integer :=23;	--numero de bits
-		E: integer :=6 	--numero de bits del exponente 
-		-- F: integer := (N - E - 1); --numero de bits de la mantisa.
-		);
-	port(
-		clk: in std_logic;
-		opA: in std_logic_vector(N-1 downto 0);
-		opB: in std_logic_vector(N-1 downto 0);
-		load: in std_logic;
-		flag: out std_logic;
-		resultado: out std_logic_vector(N-1 downto 0)		
-		);
+	component fp_math_unit is
+		generic(
+			N_BITS : integer := 32;
+			EXPONENT_BITS : integer := 8);
+		port(
+			clk           : in std_logic;
+			a             : in std_logic_vector(N_BITS-1 downto 0);
+			b             : in std_logic_vector(N_BITS-1 downto 0);
+			-- 00: Sum; 01: Substract ; 10: Multiply; 11: Sum.
+			ctrl          : in std_logic_vector(1 downto 0);
+			z             : out std_logic_vector(N_BITS-1 downto 0));
     end component;
 	
 	signal clk_tb: std_logic := '0';
-	signal OpA_file: unsigned(N-1 downto 0):= (others => '0');
-	signal OpB_file: unsigned(N-1 downto 0):= (others => '0');
-	signal result_file: unsigned(N-1 downto 0):= (others => '0');
-	signal opA_tb: std_logic_vector(N-1 downto 0);
-	signal opB_tb: std_logic_vector(N-1 downto 0);
-	signal resultado_dut: std_logic_vector(N-1 downto 0):= (others => '0');
+	signal a_file: unsigned(N-1 downto 0):= (others => '0');
+	signal b_file: unsigned(N-1 downto 0):= (others => '0');
+	signal z_file: unsigned(N-1 downto 0):= (others => '0');
+	signal a_tb: std_logic_vector(N-1 downto 0);
+	signal b_tb: std_logic_vector(N-1 downto 0);
+	signal z_tb: std_logic_vector(N-1 downto 0):= (others => '0');
 	signal load_tb: std_logic := '0';
 	signal flag_tb: std_logic := '0';
 	
 		
  begin
 	
-	clk_tb <= not clk_tb after 10 ns; -- ES EL CLOCK DE LA FPGA
+	clk_tb <= not clk_tb after 10 ns;
 		
-	--Generación de la señal de carga (load_tb)
-	
 	load: process(clk_tb)
 	begin
 		if rising_edge(clk_tb) then
@@ -57,7 +52,7 @@ architecture simulacion of testbench is
 		end if;
 	end process load;
 	
-	Test_Sequence: process
+	test_Sequence: process
 		variable l: line;
 		variable ch: character:= ' ';
 		variable aux: integer;
@@ -67,15 +62,15 @@ architecture simulacion of testbench is
 			readline(datos, l); 			-- se lee una linea del archivo de valores de prueba
 			read(l, aux); 					-- se extrae un entero de la linea
 			
-			OpA_file <= to_unsigned(aux, N); 	-- se carga el valor del operando A
+			a_file <= to_unsigned(aux, N); 	-- se carga el valor del operando A
 			read(l, ch); 					-- se lee un caracter (es el espacio)
 			read(l, aux); 					-- se lee otro entero de la linea
 			
-			OpB_file <= to_unsigned(aux, N); 	-- se carga el valor del operando B
+			b_file <= to_unsigned(aux, N); 	-- se carga el valor del operando B
 			read(l, ch); 					-- se lee otro caracter (es el espacio)
 			read(l, aux); 					-- se lee otro entero
 			
-			result_file <= to_unsigned(aux, N); 		-- se carga el valor de salida (resultado)
+			z_file <= to_unsigned(aux, N); 		-- se carga el valor de salida (resultado)
 		end loop;
 	
 		file_close(datos); -- cierra el archivo
@@ -84,19 +79,18 @@ architecture simulacion of testbench is
 			"Fin de la simulacion" severity failure;
 	end process Test_Sequence;
 	
-	opA_tb <= std_logic_vector(OpA_file);
-	opB_tb <= std_logic_vector(OpB_file);
+	a_tb <= std_logic_vector(a_file);
+	b_tb <= std_logic_vector(b_file);
 	
 	
-	DUT: multiplicador_ptof --Device under test
+	DUT: fp_math_unit --Device under test
 	generic map(N => N, E => E)
 	port map(
 		clk => clk_tb,
-		opA => opA_tb,
-		opB => opB_tb,
-		load => load_tb,
-		flag => flag_tb,
-		resultado => resultado_dut		
+		a => a_tb,
+		b => b_tb,
+		ctrl => "00",
+		z => z_tb		
 	);
 	
 	-- Verificacion de la condicion
@@ -106,9 +100,9 @@ architecture simulacion of testbench is
 	begin
 		if rising_edge(flag_tb) then
 			count := count+1;
-			assert to_integer(result_file) = to_integer(unsigned(resultado_dut)) report
+			assert to_integer(z_file) = to_integer(unsigned(z_tb)) report
 			"Salida del DUT no coincide con referencia (salida del dut = " & 
-			integer'image(to_integer(unsigned(resultado_dut))) &
+			integer'image(to_integer(unsigned(z_tb))) &
 			", salida del archivo = " &
 			integer'image(to_integer(result_file)) & "), linea " & integer'image(count)
 			severity error;
