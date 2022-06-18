@@ -1,19 +1,7 @@
---##############################################
---Multiplicador de Punto Flotante
-
---Facultad de ingeniería
---Universidad de Buenos Aires
---Autor: Sanchez Marcelo.
---Fecha: Noviembre de 2016.
---############################################
-
--- declaracion de librerias y paquetes
 library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 use std.textio.all;
-
--- declaracion de entidad
 
 entity testbench is
 end entity;
