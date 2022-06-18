@@ -9,7 +9,7 @@ entity fp_mul is
 	port(
         clk : in  std_logic;
 		a   : in  std_logic_vector(N_BITS-1 downto 0);
-		b   : out std_logic_vector(N_BITS-1 downto 0);
+		b   : in std_logic_vector(N_BITS-1 downto 0);
 		z   : out std_logic_vector(N_BITS-1 downto 0)
 	);
 end entity;
@@ -106,14 +106,8 @@ begin
 		sel => output_sel,
 		Y	=> z);
         
-    process(clk)
-    begin
-        if rising_edge(clk) then
-	        output_sel <= "00" when (to_integer(unsigned(a(N_BITS-2 downto 0)))= 0 or to_integer(unsigned(b(N_BITS-2 downto 0)))= 0) else
-                          "01" when (to_integer(signed(result_exponent)) < to_integer(MIN_BIASED_EXPONENT)) else
-                          "10" when (to_integer(signed(result_exponent)) > to_integer(MAX_BIASED_EXPONENT)) else
-                          "11";
-
-        end if;
-    end process;
+    output_sel <= "00" when (to_integer(unsigned(a(N_BITS-2 downto 0)))= 0 or to_integer(unsigned(b(N_BITS-2 downto 0)))= 0) else
+                  "01" when (to_integer(signed(result_exponent)) < to_integer(MIN_BIASED_EXPONENT)) else
+                  "10" when (to_integer(signed(result_exponent)) > to_integer(MAX_BIASED_EXPONENT)) else
+                  "11";
 end;
