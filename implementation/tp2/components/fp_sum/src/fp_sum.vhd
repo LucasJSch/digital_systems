@@ -3,11 +3,14 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
 entity fp_sum is
+    generic(
+        N_BITS : integer := 32;
+        EXPONENT_BITS : integer := 8);
 	port(
         clk           : in std_logic;
-		a             : in std_logic_vector(31 downto 0);
-		b             : in std_logic_vector(31 downto 0);
-		z             : out std_logic_vector(31 downto 0)
+		a             : in std_logic_vector(N_BITS-1 downto 0);
+		b             : in std_logic_vector(N_BITS-1 downto 0);
+		z             : out std_logic_vector(N_BITS-1 downto 0)
 	);
 end entity;
 
@@ -49,9 +52,7 @@ architecture fp_sum_arch of fp_sum is
     -- Order of bits:
     -- | SIGN_BIT | EXPONENT_BITS | MANTISSA_BITS | --
 	constant SIGN_BITS           : integer := 1;
-    constant EXPONENT_BITS       : integer := 8;
-    constant MANTISSA_BITS       : integer := 23;
-	constant N_BITS              : integer := 32;
+    constant MANTISSA_BITS       : integer := N_BITS - EXPONENT_BITS - SIGN_BITS;
 	constant MANTISSA_SHIFT_BITS : integer := 8;
 
     constant SIGN_BIT      : integer := N_BITS - SIGN_BITS;
