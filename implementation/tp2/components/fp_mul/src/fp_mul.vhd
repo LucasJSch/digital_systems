@@ -37,7 +37,7 @@ architecture fp_mul_arch of fp_mul is
     constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
     -- Maximum representable FP number
     constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := 
-        '0' & (N_BITS-2 downto N_BITS-EXPONENT_BITS-1 => '1') & (N_BITS-EXPONENT_BITS-2 => '0') & (N_BITS-EXPONENT_BITS-3 downto 0 => '1');
+        '0' & (N_BITS-2 downto N_BITS-EXPONENT_BITS => '1') & (N_BITS-EXPONENT_BITS-1 => '0') & (N_BITS-EXPONENT_BITS-2 downto 0 => '1');
 
     constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed((2**EXPONENT_BITS)/2-1, EXPONENT_BITS+1);
     constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned((2**EXPONENT_BITS)-2, EXPONENT_BITS+1);
