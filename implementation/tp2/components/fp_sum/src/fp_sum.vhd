@@ -64,6 +64,15 @@ architecture fp_sum_arch of fp_sum is
     constant MANTISSA_START_BIT  : integer := EXPONENT_END_BIT - 1;
     constant MANTISSA_END_BIT    : integer := 0;
 
+    -- FP representation of zero
+    constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
+    -- Maximum representable FP number
+    constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := 
+        '0' & (N_BITS-2 downto N_BITS-EXPONENT_BITS => '1') & (N_BITS-EXPONENT_BITS-1 => '0') & (N_BITS-EXPONENT_BITS-2 downto 0 => '1');
+
+    constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed((2**EXPONENT_BITS)/2-1, EXPONENT_BITS+1);
+    constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned((2**EXPONENT_BITS)-2, EXPONENT_BITS+1);
+    constant MIN_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(1, EXPONENT_BITS+1);
 
     signal result_sign           : std_logic := '0';
 	-- signal result_mantissa       : unsigned(MANTISSA_BITS-1 downto 0) := (others => '0');
@@ -103,6 +112,8 @@ architecture fp_sum_arch of fp_sum is
     signal s_bit                 : std_logic := '0';
     signal s_bit_final           : std_logic := '0';
 
+
+    signal debug : std_logic_vector(1 downto 0) := "00";
 
     function A2_COMPLEMENT(X : std_logic_vector(b_mantissa'length-1 downto 0))
     return std_logic_vector is
@@ -247,11 +258,18 @@ begin
 
     process(result_sign, final_exp, final_mantissa)
     begin
-        if (shift_exp_bits > 23 and are_swapped = '0') then
+        if (shift_exp_bits > MANTISSA_BITS and are_swapped = '0') then
+            debug <= "01";
             z <= a(a'left) & std_logic_vector(a_exp) & std_logic_vector(a_mantissa(MANTISSA_BITS-1 downto 0));
-        elsif (shift_exp_bits > 23 and are_swapped = '1') then
+        elsif (shift_exp_bits > MANTISSA_BITS and are_swapped = '1') then
+            debug <= "10";
             z <= b(b'left) & std_logic_vector(a_exp) & std_logic_vector(a_mantissa(MANTISSA_BITS-1 downto 0));
+        elsif (to_integer(signed(final_exp)) > to_integer(MAX_BIASED_EXPONENT)) then
+            z <= MAX_FP_REP;
+        elsif (to_integer(signed(final_exp)) < to_integer(MIN_BIASED_EXPONENT)) then
+            z <= ZERO_FP_REP;
         else
+            debug <= "11";
             z <= result_sign & std_logic_vector(final_exp) & std_logic_vector(final_mantissa);
         end if;
     end process;

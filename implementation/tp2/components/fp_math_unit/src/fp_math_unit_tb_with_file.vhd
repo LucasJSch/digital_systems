@@ -11,7 +11,7 @@ architecture arch of fp_math_unit_tb_with_file is
 	constant N_BITS: integer := 22;	--numero de bits
 	constant EXPONENT_BITS: integer := 6;	--numero de bits del exponente 
 	
-	file data_file : text open read_mode is "/home/ljsch/FIUBA/SisDig/repo/digital_systems/implementation/tp2/components/fp_math_unit/src/testfiles/fadd_15_6.txt";
+	file data_file : text open read_mode is "/home/ljsch/FIUBA/SisDig/repo/digital_systems/implementation/tp2/components/fp_math_unit/src/testfiles/fmul_15_6.txt";
 
 	component fp_math_unit is
 		generic(
@@ -74,7 +74,7 @@ begin
 		clk => clk_tb,
 		a => a_tb,
 		b => b_tb,
-		ctrl => "00", -- Sum flag
+		ctrl => "10", -- Multiplication flag
 		z => z_tb		
 	);
 	
@@ -85,9 +85,9 @@ begin
 		wait until rising_edge(clk_tb);
 		wait for 2 ns;
 		line_counter <= line_counter + 1;
-		if (unsigned(z_tb) /= z_file) then
+		if (unsigned(z_tb) /= z_file) and (unsigned(z_tb) /= z_file + 1) and (unsigned(z_tb) /= z_file - 1) then
 			errors_counter <= errors_counter +1;
 		end if;			
-		end process;
+	end process;
 	
 end architecture arch;
