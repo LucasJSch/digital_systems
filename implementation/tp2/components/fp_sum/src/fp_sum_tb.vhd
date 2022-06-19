@@ -18,7 +18,7 @@ architecture fp_sum_tb_arch of fp_sum_tb is
 		);
     end component;
 
-	constant N_BITS : integer := 30;
+	constant N_BITS : integer := 32;
 	constant N_EXP_BITS : integer := 8;
 
 	signal clk_tb : std_logic := '0';
@@ -29,8 +29,8 @@ architecture fp_sum_tb_arch of fp_sum_tb is
 begin
 
 	clk_tb <= not clk_tb after 15 ps;
-	a_tb <= "001111100110011111010111101001";
-	b_tb <= "001111110010101001001110101100";
+	a_tb <= "00111100100110101010000100000111";
+	b_tb <= "10111111001001000000110001110011";
 
 	DUT: fp_sum
 		generic map(N_BITS, N_EXP_BITS)

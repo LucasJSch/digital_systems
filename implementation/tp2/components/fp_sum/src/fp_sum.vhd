@@ -171,10 +171,15 @@ begin
 
     process(are_swapped, xor_sign)
     begin
-        mantissa_selection <= "00" when (are_swapped = '0' and xor_sign = '0') else
-                              "01" when (are_swapped = '0' and xor_sign = '1') else
-                              "10" when (are_swapped = '1' and xor_sign = '0') else
-                              "11" when (are_swapped = '1' and xor_sign = '1'); 
+        if (are_swapped = '0' and xor_sign = '0') then
+            mantissa_selection <= "00";
+        elsif (are_swapped = '0' and xor_sign = '1') then
+            mantissa_selection <= "01";
+        elsif (are_swapped = '1' and xor_sign = '0') then
+            mantissa_selection <= "10";
+        else
+            mantissa_selection <= "11";
+        end if;
     end process;
 
     b_mantissa_pre_shift <= (b_mantissa) & (b_mantissa_pre_shift'length-1-b_mantissa'length downto 0 => '0'); 
@@ -190,7 +195,11 @@ begin
     begin
         g_bit <= flag_bits(7);
         r_bit <= flag_bits(6);
-        s_bit <= '0' when flag_bits(5 downto 0) = "000000" else '1';
+        if (flag_bits(5 downto 0) = "000000") then
+            s_bit <= '0';
+        else
+            s_bit <= '1';
+        end if;
     end process;
 
     -- Step 4: Compute preliminary mantissa
@@ -236,5 +245,14 @@ begin
     result_sign <= b(SIGN_BIT) when (are_swapped = '1') else
                    a(SIGN_BIT);
 
-    z <= result_sign & std_logic_vector(final_exp) & std_logic_vector(final_mantissa);
+    process(result_sign, final_exp, final_mantissa)
+    begin
+        if (shift_exp_bits > 23 and are_swapped = '0') then
+            z <= a(a'left) & std_logic_vector(a_exp) & std_logic_vector(a_mantissa(MANTISSA_BITS-1 downto 0));
+        elsif (shift_exp_bits > 23 and are_swapped = '1') then
+            z <= b(b'left) & std_logic_vector(a_exp) & std_logic_vector(a_mantissa(MANTISSA_BITS-1 downto 0));
+        else
+            z <= result_sign & std_logic_vector(final_exp) & std_logic_vector(final_mantissa);
+        end if;
+    end process;
 end;
