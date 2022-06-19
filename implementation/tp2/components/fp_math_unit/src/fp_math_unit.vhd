@@ -17,7 +17,7 @@ end entity;
 
 architecture fp_math_unit_arch of fp_math_unit is
 
-    component fp_sum is
+    component fp_sum_sub is
         generic(
             N_BITS : integer := 32;
             EXPONENT_BITS : integer := 8);
@@ -25,18 +25,7 @@ architecture fp_math_unit_arch of fp_math_unit is
             clk           : in std_logic;
             a             : in std_logic_vector(N_BITS-1 downto 0);
             b             : in std_logic_vector(N_BITS-1 downto 0);
-            z             : out std_logic_vector(N_BITS-1 downto 0)
-        );
-    end component;
-
-    component fp_sub is
-        generic(
-            N_BITS : integer := 32;
-            EXPONENT_BITS : integer := 8);
-        port(
-            clk           : in std_logic;
-            a             : in std_logic_vector(N_BITS-1 downto 0);
-            b             : in std_logic_vector(N_BITS-1 downto 0);
+            ctrl          : in std_logic; -- 0: Sum; 1: Sub;
             z             : out std_logic_vector(N_BITS-1 downto 0)
         );
     end component;
@@ -53,26 +42,19 @@ architecture fp_math_unit_arch of fp_math_unit is
         );
     end component;
     
-    signal z_sum : std_logic_vector(N_BITS-1 downto 0);
-    signal z_sub : std_logic_vector(N_BITS-1 downto 0);
+    signal z_sum_sub : std_logic_vector(N_BITS-1 downto 0);
     signal z_mul : std_logic_vector(N_BITS-1 downto 0);
+    signal sum_sub_ctrl : std_logic;
 begin
 
-    sum_unit: fp_sum
+    sum_sub_unit: fp_sum_sub
     generic map(N_BITS, EXPONENT_BITS)
     port map(
-        clk => clk,	
-        a   => a,
-        b   => b,
-        z   => z_sum);
-
-    substract_unit: fp_sub
-    generic map(N_BITS, EXPONENT_BITS)
-    port map(
-        clk => clk,	
-        a   => a,
-        b   => b,
-        z   => z_sub);
+        clk  => clk,	
+        a    => a,
+        b    => b,
+        ctrl => sum_sub_ctrl,
+        z    => z_sum_sub);
 
     multiplication_unit: fp_mul
     generic map(N_BITS, EXPONENT_BITS)
@@ -82,7 +64,13 @@ begin
         b   => b,
         z   => z_mul);
 
-    z <= z_sum when (ctrl = "00" or ctrl = "11") else
-         z_sub when (ctrl = "01")                else
-         z_mul when (ctrl = "10");
+    process (ctrl)
+    begin
+        if (ctrl = "00" or ctrl = "11") then
+            sum_sub_ctrl <= '0';
+        elsif (ctrl = "01") then
+            sum_sub_ctrl <= '1';
+        end if;
+    end process;
+    z <= z_mul when (ctrl = "10") else z_sum_sub;
 end;
