@@ -85,20 +85,21 @@ architecture fp_sum_arch of fp_sum is
             B_mantissa_out : out std_logic_vector(N_BITS-EXPONENT_BITS downto 0));
     end component;
 
+    component mantissa_adder is
+        generic(N_BITS : integer := 32; EXPONENT_BITS : integer := 8);
+        port (
+            A_sign     : in std_logic;
+            B_sign     : in std_logic;
+            A_mantissa : in std_logic_vector(N_BITS-EXPONENT_BITS downto 0);
+            B_mantissa : in std_logic_vector(N_BITS-EXPONENT_BITS downto 0);
+            
+            result_sign     : out std_logic;
+            result_mantissa : out std_logic_vector(N_BITS-EXPONENT_BITS downto 0));
+    end component;
+
     -- Order of bits:
     -- | SIGN_BIT | EXPONENT_BITS | MANTISSA_BITS | --
-	constant SIGN_BITS           : integer := 1;
-    constant MANTISSA_BITS       : integer := N_BITS - EXPONENT_BITS - SIGN_BITS;
-	constant MANTISSA_SHIFT_BITS : integer := 8;
-
-    constant SIGN_BIT      : integer := N_BITS - SIGN_BITS;
-    constant SIGN_END_BIT        : integer := SIGN_BIT - SIGN_BITS + 1;
-
-    constant EXPONENT_START_BIT  : integer := SIGN_END_BIT - 1;
-    constant EXPONENT_END_BIT    : integer := EXPONENT_START_BIT - EXPONENT_BITS + 1;
-
-    constant MANTISSA_START_BIT  : integer := EXPONENT_END_BIT - 1;
-    constant MANTISSA_END_BIT    : integer := 0;
+    constant MANTISSA_BITS       : integer := N_BITS - EXPONENT_BITS - 1;
 
     -- FP representation of zero
     constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
@@ -120,6 +121,10 @@ architecture fp_sum_arch of fp_sum is
     signal result_exp_2             : std_logic_vector (EXPONENT_BITS downto 0);
     signal result_mantissa_2        : std_logic_vector (MANTISSA_BITS+1 downto 0);
     signal result_sign_2            : std_logic;
+
+    -- Mantissa adder variables.
+    signal result_sign_3            : std_logic;
+    signal result_mantissa_3        : std_logic_vector (MANTISSA_BITS+1 downto 0);
 
 begin
 
@@ -144,8 +149,8 @@ begin
         B_sign => B_sign_1,
         A_exp => A_exp_1,
         B_exp => B_exp_1,
-        B_mantissa => B_mantissa_1,
         A_mantissa => A_mantissa_1,
+        B_mantissa => B_mantissa_1,
         
         result_sign => result_sign_2,
         result_exp  => result_exp_2,
@@ -153,16 +158,28 @@ begin
         A_mantissa_out => A_mantissa_2,
         B_mantissa_out => B_mantissa_2);
     
+    -- Add mantissas.
+    mantissa_adder_module : mantissa_adder
+    generic map(N_BITS, EXPONENT_BITS)
+    port map(
+        A_sign => A_sign_1,
+        B_sign => B_sign_1,
+        B_mantissa => B_mantissa_2,
+        A_mantissa => A_mantissa_2,
+        
+        result_sign => result_sign_3,
+        result_mantissa => result_mantissa_3);
 
-        -- if (A_sign xor B_sign) = '0' then  --signs are the same. Just add them
-        --     result_mantissa <= std_logic_vector((unsigned(A_mantissa) + unsigned(B_mantissa)));	--Big Alu
-        --     result_sign      <= A_sign;      --both nums have same sign
-        --   --Else subtract smaller from larger and use sign of larger
-        -- elsif unsigned(A_mantissa) >= unsigned(B_mantissa) then
-        --     result_mantissa <= std_logic_vector((unsigned(A_mantissa) - unsigned(B_mantissa)));	--Big Alu
-        --     result_sign      <= A_sign;
-        -- else
-        --     result_mantissa <= std_logic_vector((unsigned(B_mantissa) - unsigned(A_mantissa)));	--Big Alu
-        --     result_sign      <= B_sign;
-        -- end if;
+    -- if unsigned(sum_mantissa) = TO_UNSIGNED(0, MANTISSA_BITS+2) then
+    --     --The sum is 0
+    --     sum_mantissa <= (others => '0');  
+    --     sum_exp        <= (others => '0');
+    -- elsif(sum_mantissa(MANTISSA_BITS+1) = '1') then  --If sum overflowed we downshift and are done.
+    --     sum_mantissa <= '0' & sum_mantissa(MANTISSA_BITS+1 downto 1);  --shift the 1 down
+    --     sum_exp        <= std_logic_vector((unsigned(sum_exp)+ 1));
+    -- elsif(sum_mantissa(MANTISSA_BITS) = '0') then  --in this case we need to upshift
+    --         --This iterates the normalization shifts, thus can take many clocks.
+    --         sum_mantissa <= sum_mantissa(MANTISSA_BITS downto 0) & '0';	
+    --         sum_exp <= std_logic_vector((unsigned(sum_exp)-1));
+    -- end if;
 end;
