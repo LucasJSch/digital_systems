@@ -38,6 +38,7 @@ begin
                 B_mantissa_out <= B_mantissa;
                 result_ready <= '1';
             else       
+                result_ready <= '0';
                 result_sign <= result_sign;
                 result_exp <= A_exp;
                 result_mantissa <= result_mantissa;
@@ -57,6 +58,7 @@ begin
                 A_mantissa_out <= A_mantissa;
                 result_ready <= '1';
             else       
+                result_ready <= '0';
                 result_sign <= result_sign;
                 result_mantissa <= result_mantissa;
                 result_exp <= B_exp;
@@ -68,6 +70,7 @@ begin
                 end if;
             end if;
         else
+            result_ready <= '0';
             result_sign <= result_sign;
             result_mantissa <= result_mantissa;
             result_exp <= A_exp;
