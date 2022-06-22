@@ -8,10 +8,10 @@ end entity;
 
 architecture arch of fp_math_unit_tb_with_file is
 	--para seleccionar un archivo modificar N, E y el nombre del archivo
-	constant N_BITS: integer := 22;	--numero de bits
-	constant EXPONENT_BITS: integer := 6;	--numero de bits del exponente 
+	constant N_BITS: integer := 29;	--numero de bits
+	constant EXPONENT_BITS: integer := 7;	--numero de bits del exponente 
 	
-	file data_file : text open read_mode is "/home/ljsch/FIUBA/SisDig/repo/digital_systems/implementation/tp2/components/fp_math_unit/src/testfiles/fmul_15_6.txt";
+	file data_file : text open read_mode is "/home/ljsch/FIUBA/SisDig/repo/digital_systems/implementation/tp2/components/fp_math_unit/src/testfiles/fadd_21_7.txt";
 
 	component fp_math_unit is
 		generic(
@@ -38,7 +38,7 @@ architecture arch of fp_math_unit_tb_with_file is
 	
 		
 begin
-	clk_tb <= not clk_tb after 10 ns;
+	clk_tb      <= not clk_tb after 10 ns;
 		
 	test_sequence: process
 		variable l: line;
@@ -67,14 +67,14 @@ begin
 	a_tb <= std_logic_vector(a_file);
 	b_tb <= std_logic_vector(b_file);
 	
-	
+
 	DUT: fp_math_unit --Device under test
 	generic map(N_BITS, EXPONENT_BITS)
 	port map(
 		clk => clk_tb,
 		a => a_tb,
 		b => b_tb,
-		ctrl => "10", -- Multiplication flag
+		ctrl => "00", -- Sum flag
 		z => z_tb		
 	);
 	
