@@ -11,11 +11,10 @@ architecture fp_sum_tb_arch of fp_sum_tb is
 			N_BITS : integer := 32;
 			EXPONENT_BITS : integer := 8);
 		port(
-			clk           : in std_logic;
-			a             : in std_logic_vector(N_BITS-1 downto 0);
-			b             : in std_logic_vector(N_BITS-1 downto 0);
-			z             : out std_logic_vector(N_BITS-1 downto 0)
-		);
+			clk : in std_logic;
+			a   : in std_logic_vector(N_BITS-1 downto 0);
+			b   : in std_logic_vector(N_BITS-1 downto 0);
+			z   : out std_logic_vector(N_BITS-1 downto 0));
     end component;
 
 	constant N_BITS : integer := 32;
