@@ -2,6 +2,7 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
+-- Entity to sum two floating point numbers.
 entity fp_sum is
     generic(
         N_BITS : integer := 32;
@@ -103,29 +104,19 @@ architecture fp_sum_arch of fp_sum is
     -- | SIGN_BIT | EXPONENT_BITS | MANTISSA_BITS | --
     constant MANTISSA_BITS       : integer := N_BITS - EXPONENT_BITS - 1;
 
-    -- FP representation of zero
-    constant ZERO_FP_REP         : std_logic_vector(N_BITS-1 downto 0) := (others => '0');
-    -- Maximum representable FP number
-    constant MAX_FP_REP          : std_logic_vector(N_BITS-1 downto 0) := 
-    '0' & (N_BITS-2 downto N_BITS-EXPONENT_BITS => '1') & (N_BITS-EXPONENT_BITS-1 => '0') & (N_BITS-EXPONENT_BITS-2 downto 0 => '1');
-
-    constant EXPONENT_BIAS       : signed(EXPONENT_BITS downto 0) := to_signed((2**EXPONENT_BITS)/2-1, EXPONENT_BITS+1);
-    constant MAX_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned((2**EXPONENT_BITS)-2, EXPONENT_BITS+1);
-    constant MIN_BIASED_EXPONENT : unsigned(EXPONENT_BITS downto 0) := to_unsigned(1, EXPONENT_BITS+1);
-
     -- Step 1: Floating point deconstruction variables.
     signal A_mantissa_1, B_mantissa_1 : std_logic_vector (MANTISSA_BITS+1 downto 0);
     signal A_exp_1, B_exp_1               : std_logic_vector (EXPONENT_BITS downto 0);
     signal A_sign_1, B_sign_1             : std_logic;
 
-    -- Step 2: Alignment variables.
+    -- Step 2: Mantissa alignment variables.
     signal A_mantissa_2, B_mantissa_2 : std_logic_vector (MANTISSA_BITS+1 downto 0);
     signal result_exp_2             : std_logic_vector (EXPONENT_BITS downto 0);
     signal result_mantissa_2        : std_logic_vector (MANTISSA_BITS+1 downto 0);
     signal result_sign_2            : std_logic;
     signal result_ready             : std_logic;
 
-    -- Step 3: Mantissa adder variables.
+    -- Step 3: Mantissa addition variables.
     signal result_sign_3            : std_logic;
     signal result_mantissa_3        : std_logic_vector (MANTISSA_BITS+1 downto 0);
     
@@ -143,6 +134,7 @@ begin
     port map(
         A => A,
         B => B,
+
         A_sign => A_sign_1,
         B_sign => B_sign_1,
         A_exp => A_exp_1,
