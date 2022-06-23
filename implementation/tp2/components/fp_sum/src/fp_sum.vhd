@@ -17,18 +17,6 @@ end entity;
 
 architecture fp_sum_arch of fp_sum is
 
-    component mux is
-        generic(N : integer:= 32);
-        port (
-            X0  : in std_logic_vector(N-1 downto 0);
-            X1  : in std_logic_vector(N-1 downto 0);
-            X2  : in std_logic_vector(N-1 downto 0);
-            X3  : in std_logic_vector(N-1 downto 0);
-            sel : in std_logic_vector(1 downto 0);
-            Y   : out std_logic_vector(N-1 downto 0) 
-        );
-    end component;
-
     component normalizer is
         generic(N: integer:= 4; M: integer := 4);
         port(
@@ -37,17 +25,6 @@ architecture fp_sum_arch of fp_sum is
             shifted_bits : out unsigned(M-1 downto 0);
             Y            : out std_logic_vector(N-1 downto 0)
         );
-    end component;
-
-    component adder is
-        generic(N: integer:= 4);
-        port(
-            X0        : in std_logic_vector(N-1 downto 0);
-            X1        : in std_logic_vector(N-1 downto 0);
-			substract : in std_logic;
-			swap_ops  : in std_logic;
-			Y         : out std_logic_vector(N-1 downto 0);
-            carry_out : out std_logic);
     end component;
 
     component fp_deconstructor is
