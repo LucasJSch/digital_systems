@@ -8,10 +8,10 @@ entity fp_sum is
         N_BITS : integer := 32;
         EXPONENT_BITS : integer := 8);
 	port(
-        clk           : in std_logic;
-		a             : in std_logic_vector(N_BITS-1 downto 0);
-		b             : in std_logic_vector(N_BITS-1 downto 0);
-		z             : out std_logic_vector(N_BITS-1 downto 0)
+        clk : in std_logic;
+		a   : in std_logic_vector(N_BITS-1 downto 0);
+		b   : in std_logic_vector(N_BITS-1 downto 0);
+		z   : out std_logic_vector(N_BITS-1 downto 0)
 	);
 end entity;
 
@@ -105,26 +105,26 @@ architecture fp_sum_arch of fp_sum is
     constant MANTISSA_BITS       : integer := N_BITS - EXPONENT_BITS - 1;
 
     -- Step 1: Floating point deconstruction variables.
-    signal A_mantissa_1, B_mantissa_1 : std_logic_vector (MANTISSA_BITS+1 downto 0);
-    signal A_exp_1, B_exp_1               : std_logic_vector (EXPONENT_BITS downto 0);
-    signal A_sign_1, B_sign_1             : std_logic;
+    signal A_mantissa_1, B_mantissa_1 : std_logic_vector(MANTISSA_BITS+1 downto 0);
+    signal A_exp_1, B_exp_1           : std_logic_vector(EXPONENT_BITS downto 0);
+    signal A_sign_1, B_sign_1         : std_logic;
 
     -- Step 2: Mantissa alignment variables.
-    signal A_mantissa_2, B_mantissa_2 : std_logic_vector (MANTISSA_BITS+1 downto 0);
-    signal result_exp_2             : std_logic_vector (EXPONENT_BITS downto 0);
-    signal result_mantissa_2        : std_logic_vector (MANTISSA_BITS+1 downto 0);
-    signal result_sign_2            : std_logic;
-    signal result_ready             : std_logic;
+    signal A_mantissa_2, B_mantissa_2 : std_logic_vector(MANTISSA_BITS+1 downto 0);
+    signal result_exp_2               : std_logic_vector(EXPONENT_BITS downto 0);
+    signal result_mantissa_2          : std_logic_vector(MANTISSA_BITS+1 downto 0);
+    signal result_sign_2              : std_logic;
+    signal result_ready               : std_logic;
 
     -- Step 3: Mantissa addition variables.
     signal result_sign_3            : std_logic;
-    signal result_mantissa_3        : std_logic_vector (MANTISSA_BITS+1 downto 0);
+    signal result_mantissa_3        : std_logic_vector(MANTISSA_BITS+1 downto 0);
     
     -- Step 4: Mantissa normalization variables.
-    signal normalized_mantissa      : std_logic_vector (MANTISSA_BITS downto 0);
+    signal normalized_mantissa      : std_logic_vector(MANTISSA_BITS downto 0);
     signal shifted_mantissa_bits    : unsigned(EXPONENT_BITS downto 0);
-    signal result_exp_4             : std_logic_vector (EXPONENT_BITS downto 0);
-    signal result_mantissa_4        : std_logic_vector (MANTISSA_BITS+1 downto 0);
+    signal result_exp_4             : std_logic_vector(EXPONENT_BITS downto 0);
+    signal result_mantissa_4        : std_logic_vector(MANTISSA_BITS+1 downto 0);
 
 begin
 
@@ -172,23 +172,24 @@ begin
         result_sign => result_sign_3,
         result_mantissa => result_mantissa_3);
 
+    -- Normalize mantissa.
     mantissa_normalizer : normalizer
     generic map(MANTISSA_BITS+1, EXPONENT_BITS+1)
     port map (
-        X            => std_logic_vector(result_mantissa_3(MANTISSA_BITS downto 0)),
-        g_bit        => '0',	
+        X => std_logic_vector(result_mantissa_3(MANTISSA_BITS downto 0)),
+        g_bit => '0',	
         shifted_bits => shifted_mantissa_bits,
-        Y  => normalized_mantissa);
+        Y => normalized_mantissa);
     
     process(result_mantissa_3, result_exp_2,
             normalized_mantissa, shifted_mantissa_bits)
     begin
         if unsigned(result_mantissa_3) = TO_UNSIGNED(0, MANTISSA_BITS+2) then
             result_mantissa_4 <= (others => '0');  
-            result_exp_4        <= (others => '0');
+            result_exp_4 <= (others => '0');
         elsif(result_mantissa_3(MANTISSA_BITS+1) = '1') then
             result_mantissa_4 <= '0' & result_mantissa_3(MANTISSA_BITS+1 downto 1);
-            result_exp_4        <= std_logic_vector((unsigned(result_exp_2)+ 1));
+            result_exp_4 <= std_logic_vector((unsigned(result_exp_2)+ 1));
         elsif(result_mantissa_3(MANTISSA_BITS) = '0') then
             result_mantissa_4 <= '0' & normalized_mantissa;	
             result_exp_4 <= std_logic_vector((unsigned(result_exp_2)-shifted_mantissa_bits));
@@ -198,12 +199,13 @@ begin
         end if;
     end process;
 
+    -- Wrapping up final result. 
     process(result_ready,
     result_mantissa_4, result_exp_4, result_sign_3,
     result_mantissa_2, result_exp_2, result_sign_2)
     begin
         if (result_ready = '0') then
-            z(MANTISSA_BITS-1 downto 0)  <= result_mantissa_4(MANTISSA_BITS-1 downto 0);
+            z(MANTISSA_BITS-1 downto 0) <= result_mantissa_4(MANTISSA_BITS-1 downto 0);
             z(N_BITS-2 downto MANTISSA_BITS) <= result_exp_4(EXPONENT_BITS-1 downto 0);
             z(N_BITS-1) <= result_sign_3;
         else
