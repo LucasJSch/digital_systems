@@ -1,7 +1,0 @@
-Pending:
-- Make fp_sum work
-- Make fp_mul generic
-- Make fp_sum generic
-- Test modules with logic provided by teacher
-- Add missing test benches
-- Clean ugly code
