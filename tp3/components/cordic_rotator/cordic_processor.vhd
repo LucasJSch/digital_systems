@@ -3,7 +3,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
 -- TODO: Add final division 1.647
-entity rotation_mode is
+entity cordic_processor is
 	generic(
         -- Describes the amount of bits per vector element.
         N_BITS_VECTOR : integer:= 32;
@@ -15,13 +15,17 @@ entity rotation_mode is
         x1   : in std_logic_vector(N_BITS_VECTOR-1 downto 0);
         y1   : in std_logic_vector(N_BITS_VECTOR-1 downto 0);
         beta : in signed(N_BITS_ANGLE-1 downto 0);
+        -- 0: Rotation mode.
+        -- 1: Vectoring mode.
+        mode : std_logic;
         x2   : out std_logic_vector(N_BITS_VECTOR downto 0);
         y2   : out std_logic_vector(N_BITS_VECTOR downto 0);
+        z2   : out std_logic_vector(N_BITS_ANGLE-1 downto 0);
         done : out std_logic);
 
 end;
 
-architecture iterative_arch of rotation_mode is
+architecture iterative_arch of cordic_processor is
 
     component cordic_kernel is
         generic(
@@ -60,7 +64,7 @@ architecture iterative_arch of rotation_mode is
             y_i => y_current,
             z_i => z_current,
             iteration => iter,
-            mode => '1', -- Rotation mode
+            mode => mode, -- Rotation mode
             x_o => x_next,
             y_o => y_next,
             z_o => z_next);
@@ -78,6 +82,7 @@ architecture iterative_arch of rotation_mode is
                     done <= '1';
                     x2 <= std_logic_vector(x_next);
                     y2 <= std_logic_vector(y_next);
+                    z2 <= std_logic_vector(z_next);
                 else
                     iter <= iter + to_unsigned(1, N_BITS_ANGLE);
                     x_current <= x_next;

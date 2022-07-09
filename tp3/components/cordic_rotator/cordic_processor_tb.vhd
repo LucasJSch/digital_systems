@@ -2,11 +2,11 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
-entity rotation_mode_tb is
+entity cordic_processor_tb is
 end;
 
-architecture rotation_mode_arch of rotation_mode_tb is
-    component rotation_mode is
+architecture cordic_processor_arch of cordic_processor_tb is
+    component cordic_processor is
     generic(
         -- Describes the amount of bits per vector element.
         N_BITS_VECTOR : integer:= 32;
@@ -18,8 +18,12 @@ architecture rotation_mode_arch of rotation_mode_tb is
         x1   : in std_logic_vector(N_BITS_VECTOR-1 downto 0);
         y1   : in std_logic_vector(N_BITS_VECTOR-1 downto 0);
         beta : in signed(N_BITS_ANGLE-1 downto 0);
+        -- 0: Rotation mode.
+        -- 1: Vectoring mode.
+        mode : std_logic;
         x2   : out std_logic_vector(N_BITS_VECTOR downto 0);
         y2   : out std_logic_vector(N_BITS_VECTOR downto 0);
+        z2   : out std_logic_vector(N_BITS_ANGLE-1 downto 0);
         done : out std_logic);
     end component;
 
@@ -41,13 +45,14 @@ begin
 
     clk_tb <= not clk_tb after 10 ns;
 
-	DUT: entity work.rotation_mode(iterative_arch)
+	DUT: entity work.cordic_processor(iterative_arch)
 		generic map(N_BITS_VECTOR, N_BITS_ANGLE, N_ITER)
 		port map(
             clk   => clk_tb,
             x1    => x1_tb,
             y1    => y1_tb,
             beta  => beta_tb,
+            mode  => '0',
             x2    => x2_tb,
             y2    => y2_tb,
             done  => done_tb);
