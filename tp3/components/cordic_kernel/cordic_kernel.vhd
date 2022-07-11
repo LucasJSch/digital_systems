@@ -53,8 +53,16 @@ architecture iterative_arch of cordic_kernel is
     function TG_MUL(x : signed(N_BITS_VECTOR downto 0); i : unsigned(N_BITS_ANGLE-1 downto 0))
     return signed is
         variable iter_int : integer := to_integer(i);
+        variable sign     : std_logic := x(N_BITS_VECTOR);
+        variable retval   : signed(N_BITS_VECTOR downto 0);
+        variable x_2c     : unsigned(N_BITS_VECTOR downto 0);
+        variable x_2c_shifted : std_logic_vector(N_BITS_VECTOR downto 0);
     begin
-        return signed(shift_right(unsigned(x), iter_int));
+        x_2c := unsigned(not(std_logic_vector(x))) + to_unsigned(1, N_BITS_VECTOR+1);
+        x_2c_shifted := std_logic_vector(shift_right(x_2c, iter_int));
+        retval := signed(shift_right(unsigned(x), iter_int)) when sign = '0' else
+                  signed(unsigned(not(x_2c_shifted)) + to_unsigned(1, N_BITS_VECTOR+1));
+        return retval;
     end TG_MUL;
 
     -- Flag indicating to which side to converge.

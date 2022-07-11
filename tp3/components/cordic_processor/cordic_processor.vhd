@@ -32,6 +32,7 @@ architecture iterative_arch of cordic_processor is
         -- Describes the amount of bits per vector element.
         N_BITS_VECTOR : integer:= 32;
         -- Describes the amount of bits to represent the angle.
+        -- 2**(N_BITS_ANGLE-2) --> 45 degrees
         N_BITS_ANGLE : integer:= 17);
         port(
         x_i       : in signed(N_BITS_VECTOR downto 0);
