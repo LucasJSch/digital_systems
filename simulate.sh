@@ -8,7 +8,7 @@
 
 GHDL=/home/ljsch/FIUBA/SisDig/software/ghdl/bin/ghdl
 GTKWAVE=gtkwave
-STOP_TIME=10000ns
+STOP_TIME=50000ns
 CURRENT_PATH=$(pwd)
 FILEPATH=$CURRENT_PATH$1
 ENTITY=$2
