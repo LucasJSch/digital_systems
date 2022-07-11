@@ -17,7 +17,8 @@ entity cordic_processor is
         beta : in signed(N_BITS_ANGLE-1 downto 0);
         -- 0: Rotation mode.
         -- 1: Vectoring mode.
-        mode : std_logic;
+        mode : in std_logic;
+        start: in std_logic;
         x2   : out std_logic_vector(N_BITS_VECTOR downto 0);
         y2   : out std_logic_vector(N_BITS_VECTOR downto 0);
         z2   : out std_logic_vector(N_BITS_ANGLE-1 downto 0);
@@ -69,9 +70,12 @@ architecture iterative_arch of cordic_processor is
             y_o => y_next,
             z_o => z_next);
 
-        process (clk)
+        process (clk, start)
         begin
-            if rising_edge(clk) then
+            if rising_edge(start) then
+                done <= '0';
+                iter <= (others => '0');
+            elsif rising_edge(clk) then
                 if (iter = to_unsigned(0, N_BITS_ANGLE)) then
                     done <= '0';
                     z_current <= signed(beta);

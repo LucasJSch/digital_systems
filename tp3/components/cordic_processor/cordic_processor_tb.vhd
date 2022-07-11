@@ -20,7 +20,8 @@ architecture cordic_processor_arch of cordic_processor_tb is
         beta : in signed(N_BITS_ANGLE-1 downto 0);
         -- 0: Rotation mode.
         -- 1: Vectoring mode.
-        mode : std_logic;
+        mode : in std_logic;
+        start: in std_logic;
         x2   : out std_logic_vector(N_BITS_VECTOR downto 0);
         y2   : out std_logic_vector(N_BITS_VECTOR downto 0);
         z2   : out std_logic_vector(N_BITS_ANGLE-1 downto 0);
@@ -40,9 +41,11 @@ architecture cordic_processor_arch of cordic_processor_tb is
     signal x2_tb           : std_logic_vector(N_BITS_VECTOR downto 0);
     signal y2_tb           : std_logic_vector(N_BITS_VECTOR downto 0);
     signal done_tb         : std_logic;
+    signal start_tb         : std_logic := '0';
 
 begin
 
+    start_tb <= '1' after 5 ns;
     clk_tb <= not clk_tb after 10 ns;
 
 	DUT: entity work.cordic_processor(iterative_arch)
@@ -53,6 +56,7 @@ begin
             y1    => y1_tb,
             beta  => beta_tb,
             mode  => '0',
+            start => start_tb,
             x2    => x2_tb,
             y2    => y2_tb,
             done  => done_tb);
