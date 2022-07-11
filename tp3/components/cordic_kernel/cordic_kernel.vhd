@@ -29,29 +29,14 @@ end;
 
 architecture iterative_arch of cordic_kernel is
 
-    function ARC_TG(iter : unsigned(N_BITS_ANGLE-1 downto 0))
-    return signed is
-        variable aux : signed(N_BITS_ANGLE-1 downto 0);
-        variable iter_int : integer := to_integer(iter);
-    begin
-        aux :=  to_signed(32767, N_BITS_ANGLE) when iter_int =  1 else
-                to_signed(19344, N_BITS_ANGLE)  when iter_int =  2 else
-                to_signed(10221, N_BITS_ANGLE)  when iter_int =  3 else
-                to_signed(5188, N_BITS_ANGLE)  when iter_int =  4 else
-                to_signed(2604, N_BITS_ANGLE)  when iter_int =  5 else
-                to_signed(1303, N_BITS_ANGLE)  when iter_int =  6 else
-                to_signed(652, N_BITS_ANGLE)  when iter_int =  7 else
-                to_signed(326, N_BITS_ANGLE)  when iter_int =  8 else
-                to_signed(163, N_BITS_ANGLE)  when iter_int =  9 else
-                to_signed(81, N_BITS_ANGLE)  when iter_int =  10 else
-                to_signed(41, N_BITS_ANGLE)  when iter_int =  11 else
-                to_signed(20, N_BITS_ANGLE)  when iter_int =  12 else
-                to_signed(10, N_BITS_ANGLE)  when iter_int =  13 else
-                to_signed(5, N_BITS_ANGLE)  when iter_int =  14 else
-                to_signed(3, N_BITS_ANGLE)  when iter_int =  15 else
-                to_signed(1, N_BITS_ANGLE);
-        return aux;
-    end ARC_TG;
+    component atan_rom is
+        generic(
+            ADDR_W  : natural := 4;
+            DATA_W : natural := 17);
+        port(
+            addr_i : in std_logic_vector(ADDR_W-1 downto 0);
+            data_o : out std_logic_vector(DATA_W-1 downto 0));
+    end component;
 
     function TG_MUL(x : signed(N_BITS_VECTOR downto 0); i : unsigned(N_BITS_ANGLE-1 downto 0))
     return signed is
@@ -70,7 +55,17 @@ architecture iterative_arch of cordic_kernel is
 
     -- Flag indicating to which side to converge.
     signal d : std_logic;
+
+    signal atan : std_logic_vector(N_BITS_ANGLE-1 downto 0);
 begin
+
+    atan_computation : atan_rom
+    generic map(N_BITS_ANGLE, N_BITS_ANGLE)
+    port map(
+        addr_i => std_logic_vector(iteration-1),
+        data_o => atan
+    );
+
     process(mode, x_i, y_i, z_i)
     begin
         if mode = '0' then
@@ -92,6 +87,6 @@ begin
            x_i + TG_MUL(y_i, iteration-1);
     y_o <= y_i + TG_MUL(x_i, iteration-1) when d = '0' else
            y_i - TG_MUL(x_i, iteration-1);
-    z_o <= z_i - ARC_TG(iteration) when d = '0' else
-           z_i + ARC_TG(iteration);
+    z_o <= z_i - signed(atan) when d = '0' else
+           z_i + signed(atan);
 end;

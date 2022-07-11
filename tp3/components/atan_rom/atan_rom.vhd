@@ -31,5 +31,12 @@ begin
 		rom(i) <= atan(i);
 	end generate Load_ROM;
     
-	data_o <= rom(to_integer(unsigned(addr_i)));
+	process(addr_i)
+	begin
+		if (signed(addr_i) < to_signed(0, ADDR_W) or signed(addr_i) > to_signed(DATA_W-1, ADDR_W)) then
+			data_o <= (others => '0');
+		else
+			data_o <= rom(to_integer(unsigned(addr_i)));
+		end if;
+	end process;
 end atan_rom_arch;
