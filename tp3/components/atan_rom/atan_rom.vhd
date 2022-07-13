@@ -20,7 +20,7 @@ architecture atan_rom_arch of atan_rom is
 	function atan (constant index : natural) return std_logic_vector is
     begin
 		return
-        std_logic_vector(to_unsigned(integer(round( (arctan(real(2)**real(-1*index)) / arctan(real(1))) * real(2**(DATA_W-2)) )), DATA_W));
+        std_logic_vector(to_unsigned(integer(round( (arctan(real(2)**real(-1*index)) / arctan(real(1))) * real(2**(DATA_W-3)) )), DATA_W));
 	end;
 
 	signal rom : rom_type(0 to DATA_W-1);
