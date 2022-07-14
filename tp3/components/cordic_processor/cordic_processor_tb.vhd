@@ -29,7 +29,7 @@ architecture cordic_processor_arch of cordic_processor_tb is
     end component;
 
 	constant N_BITS_VECTOR : integer := 15;
-	constant N_BITS_ANGLE  : integer := 17;
+	constant N_BITS_ANGLE  : integer := 18;
 	constant N_ITER        : integer := 15;
 
 	signal clk_tb          : std_logic := '0';

@@ -2,7 +2,6 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
--- TODO: Make this generic.
 entity cordic_kernel is
 	generic(
         -- Describes the amount of bits per vector element.
@@ -11,7 +10,7 @@ entity cordic_kernel is
         -- 2**(N_BITS_ANGLE-3) --> 45 degrees
         -- 2**(N_BITS_ANGLE-2) --> 90 degrees
         -- 2**(N_BITS_ANGLE-1) --> 180 degrees
-        N_BITS_ANGLE : integer:= 17);
+        N_BITS_ANGLE : integer:= 18);
     port(
         x_i       : in signed(N_BITS_VECTOR downto 0);
         y_i       : in signed(N_BITS_VECTOR downto 0);

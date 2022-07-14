@@ -8,7 +8,7 @@ entity cordic_processor is
         -- Describes the amount of bits per vector element.
         N_BITS_VECTOR : integer:= 32;
         -- Describes the amount of bits to represent the angle.
-        N_BITS_ANGLE : integer := 17;
+        N_BITS_ANGLE : integer := 18;
         N_ITER       : integer := 10);
     port(
         clk  : in std_logic;
@@ -33,7 +33,7 @@ architecture iterative_arch of cordic_processor is
         -- Describes the amount of bits per vector element.
         N_BITS_VECTOR : integer:= 32;
         -- Describes the amount of bits to represent the angle.
-        N_BITS_ANGLE : integer:= 17);
+        N_BITS_ANGLE : integer:= 18);
         port(
         x_i       : in signed(N_BITS_VECTOR downto 0);
         y_i       : in signed(N_BITS_VECTOR downto 0);
@@ -57,7 +57,6 @@ architecture iterative_arch of cordic_processor is
     signal z_next    : signed(N_BITS_ANGLE-1 downto 0) := (others => '0');
 
     begin
-
         computation_kernel : cordic_kernel
         generic map(N_BITS_VECTOR, N_BITS_ANGLE)
         port map(
@@ -95,4 +94,72 @@ architecture iterative_arch of cordic_processor is
                 end if;
             end if;
         end process;
+end;
+
+architecture unrolled_arch of cordic_processor is
+
+    component cordic_kernel is
+        generic(
+        -- Describes the amount of bits per vector element.
+        N_BITS_VECTOR : integer:= 32;
+        -- Describes the amount of bits to represent the angle.
+        N_BITS_ANGLE : integer:= 18);
+        port(
+        x_i       : in signed(N_BITS_VECTOR downto 0);
+        y_i       : in signed(N_BITS_VECTOR downto 0);
+        z_i       : in signed(N_BITS_ANGLE-1 downto 0);
+        iteration : in unsigned(N_BITS_ANGLE-1 downto 0);
+        -- Mode flag
+        -- 0: Rotation mode.
+        -- 1: Vectoring mod.
+        mode      : in std_logic;
+        x_o       : out signed(N_BITS_VECTOR downto 0);
+        y_o       : out signed(N_BITS_VECTOR downto 0);
+        z_o       : out signed(N_BITS_ANGLE-1 downto 0));
+    end component;
+
+    -- Adds one extra bit to signed vector.
+    function ADD_BIT(x : std_logic_vector(N_BITS_VECTOR-1 downto 0))
+    return signed is
+        variable x_2c          : unsigned(N_BITS_VECTOR-1 downto 0);
+        variable x_2c_extended : unsigned(N_BITS_VECTOR downto 0);
+        variable x_2c_final : unsigned(N_BITS_VECTOR downto 0);
+    begin
+        x_2c := unsigned(not(x)) + to_unsigned(1, N_BITS_VECTOR) when x(N_BITS_VECTOR-1) = '1' else
+        unsigned(x);
+        x_2c_extended := '0' & x_2c;
+        x_2c_final := not(x_2c_extended) + to_unsigned(1, N_BITS_VECTOR) when x(N_BITS_VECTOR-1) = '1' else
+        x_2c_extended;
+        
+        return signed(x_2c_final);
+    end ADD_BIT;
+        
+    type x_type is array (0 to N_ITER) of signed(N_BITS_VECTOR downto 0);
+    type y_type is array (0 to N_ITER) of signed(N_BITS_VECTOR downto 0);
+    type z_type is array (0 to N_ITER) of signed(N_BITS_ANGLE-1 downto 0);
+
+    signal x : x_type;
+    signal y : y_type;
+    signal z : z_type;
+    begin
+        generate_label : for iter in 0 to N_ITER-1 generate
+        begin
+            x(0) <= ADD_BIT(x1);
+            y(0) <= ADD_BIT(y1);
+            z(0) <= beta;
+            computation_kernel_i : cordic_kernel
+            generic map(N_BITS_VECTOR, N_BITS_ANGLE)
+            port map(
+                x_i => x(iter),
+                y_i => y(iter),
+                z_i => z(iter),
+                iteration => to_unsigned(iter+1, N_BITS_ANGLE),
+                mode => mode,
+                x_o => x(iter+1),
+                y_o => y(iter+1),
+                z_o => z(iter+1));
+        end generate;
+        x2 <= std_logic_vector(x(N_ITER-1));
+        y2 <= std_logic_vector(y(N_ITER-1));
+        z2 <= std_logic_vector(z(N_ITER-1));
     end;
