@@ -2,7 +2,6 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
--- TODO: Add final division 1.647
 entity cordic_processor is
 	generic(
         -- Describes the amount of bits per vector element.
