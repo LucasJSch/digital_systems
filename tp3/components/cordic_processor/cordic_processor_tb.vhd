@@ -48,7 +48,7 @@ begin
     start_tb <= '1' after 5 ns;
     clk_tb <= not clk_tb after 10 ns;
 
-	DUT: entity work.cordic_processor(iterative_arch)
+	DUT: entity work.cordic_processor(unrolled_arch)
 		generic map(N_BITS_VECTOR, N_BITS_ANGLE, N_ITER)
 		port map(
             clk   => clk_tb,

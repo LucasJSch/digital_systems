@@ -39,13 +39,24 @@ architecture iterative_arch of cordic_processor is
         y_i       : in signed(N_BITS_VECTOR downto 0);
         z_i       : in signed(N_BITS_ANGLE-1 downto 0);
         iteration : in unsigned(N_BITS_ANGLE-1 downto 0);
+        atan      : in signed(N_BITS_ANGLE-1 downto 0);
         -- Mode flag
         -- 0: Rotation mode.
         -- 1: Vectoring mod.
         mode      : in std_logic;
+        ena       : in std_logic;
         x_o       : out signed(N_BITS_VECTOR downto 0);
         y_o       : out signed(N_BITS_VECTOR downto 0);
         z_o       : out signed(N_BITS_ANGLE-1 downto 0));
+    end component;
+
+    component atan_rom is
+        generic(
+            ADDR_W  : natural := 4;
+            DATA_W : natural := 17);
+        port(
+            addr_i : in std_logic_vector(ADDR_W-1 downto 0);
+            data_o : out std_logic_vector(DATA_W-1 downto 0));
     end component;
 
     signal iter      : unsigned(N_BITS_ANGLE-1 downto 0) := (others => '0');
@@ -55,16 +66,27 @@ architecture iterative_arch of cordic_processor is
     signal y_next    : signed(N_BITS_VECTOR downto 0) := (others => '0');
     signal z_current : signed(N_BITS_ANGLE-1 downto 0) := (others => '0');
     signal z_next    : signed(N_BITS_ANGLE-1 downto 0) := (others => '0');
+    signal atan      : signed(N_BITS_ANGLE-1 downto 0);
+
 
     begin
-        computation_kernel : cordic_kernel
+        atan_computation : atan_rom
+        generic map(N_BITS_ANGLE, N_BITS_ANGLE)
+        port map(
+            addr_i => std_logic_vector(iter-1),
+            signed(data_o) => atan
+        );
+
+        cordic_equations_kernel : cordic_kernel
         generic map(N_BITS_VECTOR, N_BITS_ANGLE)
         port map(
             x_i => x_current,
             y_i => y_current,
             z_i => z_current,
             iteration => iter,
+            atan => atan,
             mode => mode, -- Rotation mode
+            ena => '1',
             x_o => x_next,
             y_o => y_next,
             z_o => z_next);
@@ -109,13 +131,24 @@ architecture unrolled_arch of cordic_processor is
         y_i       : in signed(N_BITS_VECTOR downto 0);
         z_i       : in signed(N_BITS_ANGLE-1 downto 0);
         iteration : in unsigned(N_BITS_ANGLE-1 downto 0);
+        atan      : in signed(N_BITS_ANGLE-1 downto 0);
         -- Mode flag
         -- 0: Rotation mode.
         -- 1: Vectoring mod.
         mode      : in std_logic;
+        ena       : in std_logic;
         x_o       : out signed(N_BITS_VECTOR downto 0);
         y_o       : out signed(N_BITS_VECTOR downto 0);
         z_o       : out signed(N_BITS_ANGLE-1 downto 0));
+    end component;
+
+    component atan_rom is
+        generic(
+            ADDR_W  : natural := 4;
+            DATA_W : natural := 17);
+        port(
+            addr_i : in std_logic_vector(ADDR_W-1 downto 0);
+            data_o : out std_logic_vector(DATA_W-1 downto 0));
     end component;
 
     -- Adds one extra bit to signed vector.
@@ -125,36 +158,76 @@ architecture unrolled_arch of cordic_processor is
         variable x_2c_extended : unsigned(N_BITS_VECTOR downto 0);
         variable x_2c_final : unsigned(N_BITS_VECTOR downto 0);
     begin
-        x_2c := unsigned(not(x)) + to_unsigned(1, N_BITS_VECTOR) when x(N_BITS_VECTOR-1) = '1' else
-        unsigned(x);
+        if x(N_BITS_VECTOR-1) = '1' then
+            x_2c := unsigned(not(x)) + to_unsigned(1, N_BITS_VECTOR);
+        else
+            x_2c := unsigned(x);
+        end if;
         x_2c_extended := '0' & x_2c;
-        x_2c_final := not(x_2c_extended) + to_unsigned(1, N_BITS_VECTOR) when x(N_BITS_VECTOR-1) = '1' else
-        x_2c_extended;
+        if x(N_BITS_VECTOR-1) = '1'  then
+            x_2c_final := not(x_2c_extended) + to_unsigned(1, N_BITS_VECTOR);
+        else
+            x_2c_final := x_2c_extended;
+        end if;
         
         return signed(x_2c_final);
     end ADD_BIT;
         
-    type x_type is array (0 to N_ITER) of signed(N_BITS_VECTOR downto 0);
-    type y_type is array (0 to N_ITER) of signed(N_BITS_VECTOR downto 0);
-    type z_type is array (0 to N_ITER) of signed(N_BITS_ANGLE-1 downto 0);
+    type x_type is array (0 to N_ITER+1) of signed(N_BITS_VECTOR downto 0);
+    type y_type is array (0 to N_ITER+1) of signed(N_BITS_VECTOR downto 0);
+    type z_type is array (0 to N_ITER+1) of signed(N_BITS_ANGLE-1 downto 0);
 
     signal x : x_type;
     signal y : y_type;
     signal z : z_type;
+    signal atan : signed(N_BITS_ANGLE-1 downto 0);
+    signal iteration : unsigned(N_BITS_ANGLE-1 downto 0) := (others => '0');
+    signal reg_signal : std_logic_vector(N_ITER-1 downto 0) := (others => '0');
+
     begin
+        process(clk, start)
+        begin
+            if rising_edge(start) then
+                done <= '0';
+                iteration <= (others => '0');
+                reg_signal <= (others =>'0');
+            end if;
+            if rising_edge(clk) then
+                if (iteration < N_ITER) then
+                    iteration <= iteration + to_unsigned(1, N_BITS_ANGLE);
+                    if (unsigned(reg_signal) = to_unsigned(0, N_ITER)) then
+                        reg_signal(0) <= '1';
+                    else
+                        reg_signal <= reg_signal(N_ITER-2 downto 0) & '0';
+                    end if;
+                else
+                    done <= '1';
+                end if;
+            end if;
+        end process;
+
+        atan_computation : atan_rom
+        generic map(N_BITS_ANGLE, N_BITS_ANGLE)
+        port map(
+            addr_i => std_logic_vector(iteration-1),
+            signed(data_o) => atan
+        );
+
+        x(0) <= ADD_BIT(x1);
+        y(0) <= ADD_BIT(y1);
+        z(0) <= beta;
         generate_label : for iter in 0 to N_ITER-1 generate
         begin
-            x(0) <= ADD_BIT(x1);
-            y(0) <= ADD_BIT(y1);
-            z(0) <= beta;
-            computation_kernel_i : cordic_kernel
+            cordic_equations_kernel_i : cordic_kernel
             generic map(N_BITS_VECTOR, N_BITS_ANGLE)
             port map(
                 x_i => x(iter),
                 y_i => y(iter),
                 z_i => z(iter),
                 iteration => to_unsigned(iter+1, N_BITS_ANGLE),
+                atan => atan,
                 mode => mode,
+                ena => reg_signal(iter),
                 x_o => x(iter+1),
                 y_o => y(iter+1),
                 z_o => z(iter+1));
