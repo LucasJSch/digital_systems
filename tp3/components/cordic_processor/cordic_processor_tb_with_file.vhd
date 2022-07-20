@@ -8,7 +8,7 @@ end entity;
 
 architecture arch of cordic_processor_tb_with_file is
 	constant N_BITS_VECTOR : integer := 15;
-	constant N_BITS_ANGLE  : integer := 17; 
+	constant N_BITS_ANGLE  : integer := 18; 
 	constant N_ITER        : integer := 15; 
 
     -- Bits tolerance to verify correctness of result.
@@ -109,7 +109,7 @@ begin
 		x1 => xi_tb,
 		y1 => yi_tb,
         beta => beta_file,
-        mode => '0', -- rotation mod
+        mode => '0', -- rotation mode
         start => start_tb,
         x2 => xo_tb,
         y2 => yo_tb,
